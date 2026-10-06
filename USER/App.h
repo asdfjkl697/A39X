@@ -53,6 +53,7 @@ extern void App_init(void);
 extern void os_task_app(OS_TASK_ID nTask_ID);
 extern void App_Cmd_Handler(u8 *nbuf, u16 nLen);
 extern u16 TM_ACK_Value;
+extern void App_Update_Cnt_Set(u8 cnt);
 
 
 #define FLASH_SIZE (1024 * (*((u32 *)0x1FFFF7E0))) /* read from at32 flash capacity register(unit:byte) */
@@ -101,7 +102,7 @@ indicates that an app upgrade will follow, see ota application note for more det
 #define OTA_PACKAGE_SIZE 200 // byte
 #define OTA_PACKAGE_DELAY 0  // ms 数据包接收间隔，写0表示使用应答的方式
 
-#define OTA_MODE "0TA_MODE_A391S-1"
+// #define OTA_MODE "0TA_MODE_A391S-1"
 
 
 //u8 TxF1Enable();

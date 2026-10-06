@@ -171,6 +171,9 @@ void MassageUpdate(void)
 		{
 			// MassIntensitySet(MassP->_3DIntensity[temp - 1]);
 			nBackIntensity = MassModeGet(AutoModeGet())->_3DIntensity[temp - 1]; // * 根据强度 设置3D 档位
+#ifdef USE_M2_4D
+			nBackIntensity_M2 = MassModeGet(AutoModeGet())->_3DIntensity[temp - 1]; // todo add 260109
+#endif
 			AirIntensitySet(MassP->AirIntensity[temp - 1]);
 		}
 
@@ -291,7 +294,13 @@ void MassIntensitySet(u8 inten)
 	Manual[MoveUp].MassIntensity = inten;
 	Move_Flag[MoveUp].Inten = 1; //* add 250925
 }
-
+#ifdef USE_M2_4D
+void MassIntensitySet_M2(u8 inten) // todo add 260108
+{
+	Manual[MoveDw].MassIntensity = inten;
+	Move_Flag[MoveDw].Inten = 1; //* add 250925
+}
+#endif
 u8 MassWiseGet(u8 whi)
 {
 	return Manual[whi].MassWise;

@@ -110,7 +110,11 @@ void AT_TableHandle(AT_CMD_S *cmd_p, u8 tablenum)
 	if (MSG4Move[MoveUp].Knead.Finish == 1 && MSG4Move[MoveUp].Tread.Finish == 1 && MSG4Move[MoveUp].Flex.Finish == 1 && MSG4Move[MoveUp].Tap.Finish == 1)
 		move_finish = 1;
 #ifdef USE_M2
+#ifdef USE_M2_4D
+	if (MSG4Move[MoveDw].Knead.Finish == 1 && MSG4Move[MoveDw].Tread.Finish == 1 && MSG4Move[MoveDw].Flex.Finish == 1 && MSG4Move[MoveDw].Tap.Finish == 1)
+#else
 	if (MSG4Move[MoveDw].Knead.Finish == 1 && MSG4Move[MoveDw].Tread.Finish == 1 && MSG4Move[MoveDw].Tap.Finish == 1)
+#endif
 		movedw_finish = 1;
 	if (tablenum == Table_MoveDw) //* 只判断下机芯
 		move_finish = movedw_finish;
@@ -168,6 +172,7 @@ void AT_TableHandle(AT_CMD_S *cmd_p, u8 tablenum)
 		case MoveDw_Tread:
 		case MoveDw_Knead:
 		case MoveDw_Tap:
+		case MoveDw_Flex:
 			Part_Date_Set(module, 0, pAutoExeStepData->Method,
 						  pAutoExeStepData->Para1, pAutoExeStepData->Para2, pAutoExeStepData->Para3);
 			break;
@@ -190,6 +195,7 @@ void AT_TableHandle(AT_CMD_S *cmd_p, u8 tablenum)
 			MoveFolw_Cmd.Tap_cmd = pAutoExeStepData->Method;
 			break;
 		case MoveDw_FlexF:
+			MoveFolw_Cmd.Flex_cmd = pAutoExeStepData->Method;
 			break;
 #endif
 		case MoveUp_Tread:
@@ -266,12 +272,17 @@ void AT_TableHandle(AT_CMD_S *cmd_p, u8 tablenum)
 #ifdef USE_M2
 		case Part_MVDW: //* 调用下机芯程序
 			if (pAutoExeStepData->Method == PartCon_Run)
+			{
+				memset(&MoveFolw_Cmd, 0, sizeof(Move_Follow_Cmd_T)); // TODO ADD 260201
 				MoveDwMassMode_Load(pAutoExeStepData->Para1);
+			}
 			else if (pAutoExeStepData->Method == PartCon_Stop) //* 关闭下机芯自动程序及跟随命令
 			{
-				MoveFolw_Cmd.Tread_cmd = FOLW_STOP;
-				MoveFolw_Cmd.Knead_cmd = FOLW_STOP;
-				MoveFolw_Cmd.Tap_cmd = FOLW_STOP;
+				// MoveFolw_Cmd.Tread_cmd = FOLW_STOP;
+				// MoveFolw_Cmd.Knead_cmd = FOLW_STOP;
+				// MoveFolw_Cmd.Tap_cmd = FOLW_STOP;
+				// MoveFolw_Cmd.Flex_cmd = FOLW_STOP;
+				memset(&MoveFolw_Cmd, 0, sizeof(Move_Follow_Cmd_T)); // TODO md 260201
 				MoveDw_Manual_Pause();
 				MoveDwMassMode_Load(DWTB_CLOSE);
 			}
@@ -404,13 +415,16 @@ void AT_TableHandle(AT_CMD_S *cmd_p, u8 tablenum)
 				MSG2Move[MoveDw].Tread.Update = Move_Flag[MoveDw].Tread_p;
 				MSG2Move[MoveDw].Knead.Update = Move_Flag[MoveDw].Knead_p;
 				MSG2Move[MoveDw].Tap.Update = Move_Flag[MoveDw].Tap_p;
+				MSG2Move[MoveDw].Flex.Update = Move_Flag[MoveDw].Flex_p;
 				Move_Flag[MoveDw].Tread_p = 0;
 				Move_Flag[MoveDw].Knead_p = 0;
 				Move_Flag[MoveDw].Tap_p = 0;
+				Move_Flag[MoveDw].Flex_p = 0;
 
 				MSG4Move[MoveDw].Knead.Finish = 0;
 				MSG4Move[MoveDw].Tread.Finish = 0;
 				MSG4Move[MoveDw].Tap.Finish = 0;
+				MSG4Move[MoveDw].Flex.Finish = 0;
 				break;
 #endif
 			case ConMth_MoveUp:
@@ -450,6 +464,12 @@ void AT_TableHandle(AT_CMD_S *cmd_p, u8 tablenum)
 					Move_Flag[MoveDw].Tap_p = 0;
 					MSG4Move[MoveDw].Tap.Finish = 0;
 				}
+				if (MoveFolw_Cmd.Flex_cmd > FOLW_STOP) // todo add 260117
+				{
+					MSG2Move[MoveDw].Flex.Update = Move_Flag[MoveDw].Flex_p;
+					Move_Flag[MoveDw].Flex_p = 0;
+					MSG4Move[MoveDw].Flex.Finish = 0;
+				}
 #endif
 				break;
 			case ConMth_Move:
@@ -474,14 +494,17 @@ void AT_TableHandle(AT_CMD_S *cmd_p, u8 tablenum)
 				MSG2Move[MoveDw].Tread.Update = Move_Flag[MoveDw].Tread_p;
 				MSG2Move[MoveDw].Knead.Update = Move_Flag[MoveDw].Knead_p;
 				MSG2Move[MoveDw].Tap.Update = Move_Flag[MoveDw].Tap_p;
+				MSG2Move[MoveDw].Flex.Update = Move_Flag[MoveDw].Flex_p;
 				Move_Flag[MoveDw].Tread_p = 0;
 				Move_Flag[MoveDw].Knead_p = 0;
 				Move_Flag[MoveDw].Tap_p = 0;
+				Move_Flag[MoveDw].Flex_p = 0;
 				Massage_Flag.DwFinish = 1; //* 判断下机芯完成
 
 				MSG4Move[MoveDw].Knead.Finish = 0;
 				MSG4Move[MoveDw].Tread.Finish = 0;
 				MSG4Move[MoveDw].Tap.Finish = 0;
+				MSG4Move[MoveDw].Flex.Finish = 0;
 #endif
 				break;
 			case ConMth_Air:

@@ -55,6 +55,7 @@ void WorkStateProcess(void)
 
 	case WorkState_TurnOn:
 		if (Massage_Flag.Reset && !TICK_COUNTER(Work.Tick, TIMEOUT_60S)) // * 增加复位超时 251212
+		// if (Massage_Flag.Reset && !TICK_COUNTER(Work.Tick, 6000)) // @ 调试使用 260813
 		{
 			if (AtTabGet(Table_Auto)->PartOverMark == EXEC_TurnOn) // @ add 260129 加快异常开机速度
 			{
@@ -331,6 +332,9 @@ void WorkStateProcess(void)
 				Core_RestSuccess = 0;
 				MChair.CFG.Bit.CoreReset = 0;
 				ResetStep = 0;
+#ifdef PART_USE_SUM_TIME
+				App_Update_Cnt_Set(3); // @ run time 260927
+#endif
 			}
 			break;
 		}
@@ -529,11 +533,13 @@ void UserFunc_Set(u8 ntype, u8 nparam)
 		break;
 
 	case UserFunc_PowerOff:
+
 		Memorystate &= 0x0f; // * 增加 取消调用显示 250617
 #ifdef USE_SOUNDWAVE
 		Flash_Parameter_read(); // todo 读取存储值 主要为了音波 260707
 #endif
 		Flash_Parameter_Write(); // @ 关机保存 250124
+
 		MChair.CFG.All = 0;
 		MChair.CFG.Bit.CoreReset = 1;
 		ResetStep = 0;
@@ -671,6 +677,9 @@ void UserFunc_Set(u8 ntype, u8 nparam)
 			MassArea_PartParamSet(MoveUp, BodyArea[LB_2]);
 
 #ifdef USE_M2
+#ifdef USE_M2_4D
+			nBackIntensity_M2 = 0; // todo add 260109
+#endif
 			MassWiseSet(MoveDw, TZ);
 			MassWidthSet(MoveDw, 0);
 			MassAreaSet(MoveDw, Area_Fixed);

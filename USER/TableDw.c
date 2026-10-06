@@ -1,5 +1,7 @@
 #include "Table.h"
 
+#ifndef USE_M2_4D
+
 //* 补充动作
 const CoreMixOtherTabItem_t MoveDwTab_0_RPZ[] = {
 
@@ -392,3 +394,5 @@ void MoveDwMassMode_Load(u8 ID)
 		AtTabSet_ID(Table_MoveDw, ID);
 	}
 }
+
+#endif // USE_M2_4D

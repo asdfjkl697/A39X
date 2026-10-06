@@ -1,0 +1,12 @@
+# === 编译产物（不入库） ===
+
+# Keil MDK 输出目录：只保留烧录镜像 .bin/.hex，其余全部忽略
+Objects/*
+!Objects/*.bin
+!Objects/*.hex
+
+# Keil 列表文件（.map / .lst）
+Listings/
+
+# CMake / GCC 构建目录
+build/

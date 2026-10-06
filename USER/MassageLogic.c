@@ -56,7 +56,7 @@ u8 Leg_Protect_Flag = 0;
 
 bool Leg_Touch_Flag = 0;       // * 触底发生标志位 250513
 bool Leg_Touch_Air_Flag = 0;   // * 触地关闭腿脚气压标志 250612
-static u32 Leg_Touch_Tick = 0;        // * 触底发生超时
+static u32 Leg_Touch_Tick = 0; // * 触底发生超时
 bool STETCHGAS_Touch_Flag = 0; // * 增加 250610
 bool MoveUpDw_Loss_Flag = 0;
 
@@ -195,6 +195,9 @@ static void HealthPrepare_Deal(void)
     if (Health_State == Health_State_Check && Massage_Flag.HealthPrepare)
     {
         Part_Date_Set(MoveUp_Flex, 1, FLEX_FIX_CIRCLE, 0, 0, 6);
+#ifdef USE_M2_4D
+        Part_Date_Set(MoveDw_Flex, 1, FLEX_FIX_CIRCLE, 0, 0, 6); // todo add 260127
+#endif
         if (MSG4Move[MoveUp].Flex.CircleH == 0 && MSG4Move[MoveUp].Flex.CircleL < 5)
         {
             Massage_Flag.HealthPrepare = 0;
@@ -209,8 +212,9 @@ static void AirSHD_MoveUp_Paradox(void)
         return;
     AirT_Work.Paradox[AirT_SHD] = 0;
     u16 moveupcircle = MoveCurTreadCircleGet(MoveUp);
+
     if (moveupcircle > (BodyArea[2] + 5) && moveupcircle < (BodyArea[6] - 5) &&
-        (MSG2Move[MoveUp].Flex.Para1 > 16 || MSG4Move[MoveUp].Knead.CircleL > 55 || MSG4Move[MoveUp].Knead.CircleL < 20))
+        (MSG2Move[MoveUp].Flex.Para1 > (16 + NECK_FLEX_ADD * 3) || MSG4Move[MoveUp].Knead.CircleL > 55 || MSG4Move[MoveUp].Knead.CircleL < 20))
     {
         AirT_Work.Paradox[AirT_SHD] = 1;
     }

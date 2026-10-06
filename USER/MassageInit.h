@@ -212,6 +212,9 @@ u8 MassWidthGet(u8 whi);
 void MassWidthSet(u8 whi, u8 width);
 u8 MassIntensityGet(void);
 void MassIntensitySet(u8 inten);
+#ifdef USE_M2_4D
+void MassIntensitySet_M2(u8 inten);
+#endif
 MassageInfo_S *MassModeGet(u8 param);
 void MassageUpdate(void);
 

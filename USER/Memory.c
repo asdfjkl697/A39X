@@ -17,26 +17,25 @@ u8 Manual_Save_AirIntensity = 0;
 bool LoadSave_Flag = 0; // * 读取收藏标志位
 
 #ifdef PART_USE_SUM_TIME
-#define PART_USE_SUM_ADDR 0x08040000 // * 增加 2K 0x0807a000-0x0807a800 250528
-#define Max_USE_SUM 10
-static uint16_t Flash_USE_SUM_Buf[Max_USE_SUM + 2];
-static uint16_t PART_USE_Time[Max_USE_SUM];
+#define PART_USE_SUM_ADDR 0x08040000                    // * 增加 2K 0x0807a000-0x0807a800 250528
+static uint16_t Flash_USE_SUM_Buf[Max_USE_SUM * 2 + 2]; // @ AI 改32位 260927 每值拆2半字 + 2魔术字
 static uint32_t PART_USE_Time_S[Max_USE_SUM];
+uint32_t PART_USE_Time[Max_USE_SUM]; // @ AI 防溢出 260927 原uint16_t(≈45天)
 void Flash_PART_USE_read(void)
 {
     u8 i;
-    GDFLASH_Read(PART_USE_SUM_ADDR, Flash_USE_SUM_Buf, Max_USE_SUM + 2);
-    if (Flash_USE_SUM_Buf[Max_USE_SUM] == 0x5aa5 && Flash_USE_SUM_Buf[Max_USE_SUM + 1] == 0xfeef) // 有数据
+    GDFLASH_Read(PART_USE_SUM_ADDR, Flash_USE_SUM_Buf, Max_USE_SUM * 2 + 2);
+    if (Flash_USE_SUM_Buf[Max_USE_SUM * 2] == 0x5aa5 && Flash_USE_SUM_Buf[Max_USE_SUM * 2 + 1] == 0xfeef) // 有数据
     {
         for (i = 0; i < Max_USE_SUM; i++)
         {
-            PART_USE_Time[i] = Flash_USE_SUM_Buf[i];
-            PART_USE_Time_S[i] = PART_USE_Time[i] << 6;
+            PART_USE_Time[i] = (uint32_t)Flash_USE_SUM_Buf[i * 2] | ((uint32_t)Flash_USE_SUM_Buf[i * 2 + 1] << 16); // @ AI 拼32位 260927 低半字|高半字<<16
+            PART_USE_Time_S[i] = PART_USE_Time[i] * 60;
         }
     }
     else
     {
-        memset(PART_USE_Time, 0, Max_USE_SUM * 2);
+        memset(PART_USE_Time, 0, sizeof(PART_USE_Time));
     }
 }
 
@@ -45,13 +44,14 @@ static void Flash_PART_USE_Write(void)
     u8 i;
     for (i = 0; i < Max_USE_SUM; i++)
     {
-        Flash_USE_SUM_Buf[i] = PART_USE_Time[i];
+        Flash_USE_SUM_Buf[i * 2] = (uint16_t)(PART_USE_Time[i] & 0xFFFF);  // @ AI 拆32位 260927 低半字
+        Flash_USE_SUM_Buf[i * 2 + 1] = (uint16_t)(PART_USE_Time[i] >> 16); // @ AI 拆32位 260927 高半字
     }
 
-    Flash_USE_SUM_Buf[Max_USE_SUM] = 0x5aa5;
-    Flash_USE_SUM_Buf[Max_USE_SUM + 1] = 0xfeef;
+    Flash_USE_SUM_Buf[Max_USE_SUM * 2] = 0x5aa5;
+    Flash_USE_SUM_Buf[Max_USE_SUM * 2 + 1] = 0xfeef;
 
-    GDFLASH_Write(PART_USE_SUM_ADDR, Flash_USE_SUM_Buf, Max_USE_SUM + 2);
+    GDFLASH_Write(PART_USE_SUM_ADDR, Flash_USE_SUM_Buf, Max_USE_SUM * 2 + 2);
 }
 
 void PartUse_Process_S(void)
@@ -63,22 +63,38 @@ void PartUse_Process_S(void)
 
     if (WorkStateGet() != WorkState_Work)
         return;
-    if (MassWiseGet(MoveUp) == RNZ || MassWiseGet(MoveUp) == RNF || MassWiseGet(MoveUp) == RPZ || MassWiseGet(MoveUp) == RPF ||
-        MassWiseGet(MoveUp) == D3RNZ || MassWiseGet(MoveUp) == D3RNF || MassWiseGet(MoveUp) == D3RPZ || MassWiseGet(MoveUp) == D3RPF ||
-        MassWiseGet(MoveUp) == RNZFS || MassWiseGet(MoveUp) == RNZFD || MassWiseGet(MoveUp) == RNZ_C)
-        PART_USE_Time_S[1]++; // * 揉捏 计数s
-    if (MassWiseGet(MoveUp) == PD || MassWiseGet(MoveUp) == PDB || MassWiseGet(MoveUp) == RPZ || MassWiseGet(MoveUp) == RPF ||
-        MassWiseGet(MoveUp) == D3PD || MassWiseGet(MoveUp) == D3RPZ || MassWiseGet(MoveUp) == D3RPF)
-        PART_USE_Time_S[2]++; // * 拍打 计数s
-    if (MassWiseGet(MoveUp) == D3RNZ || MassWiseGet(MoveUp) == D3RNF || MassWiseGet(MoveUp) == D3RPZ ||
-        MassWiseGet(MoveUp) == D3RPF || MassWiseGet(MoveUp) == D3PD)
+
+    // if (MSG4Move[MoveUp].Knead.Finish == 0)
+    u8 method = MSG2Move[MoveUp].Knead.Method;
+    if (method == KNEAD_FWD || method == KNEAD_FWD_CLK || method == KNEAD_FWD_CNT ||
+        method == KNEAD_REV || method == KNEAD_REV_CLK || method == KNEAD_REV_CNT ||
+        method == KNEAD_BACK_FORTH || method == KNEAD_1F2R || method == KNEAD_1R2F ||
+        method == KNEAD_1F2F || method == KNEAD_1R2R) // todo md 260927
+        PART_USE_Time_S[1]++;                         // * 揉捏 计数s
+
+    if (MSG2Move[MoveUp].Tap.Speed > 0) // todo md 260927
+        PART_USE_Time_S[2]++;           // * 拍打 计数s
+
+    method = MSG2Move[MoveUp].Tread.Method;
+    if (MSG4Move[MoveUp].Tread.Finish == 0 || method == TREAD_BACK_AND_FORTH || method == TREAD_BACK_AND_FORTH_CUR_POINT)
+        PART_USE_Time_S[3]++; // * 伸缩 计数s
+
+    method = MSG2Move[MoveUp].Flex.Method;
+    if (MSG4Move[MoveUp].Flex.Finish == 0 || method == FLEX_BACK_FORTH || method == FLEX_BACK_FORTH2)
         PART_USE_Time_S[4]++; // * 伸缩 计数s
+
 #ifdef USE_M2
-    if (MassWiseGet(MoveDw) == RNZ || MassWiseGet(MoveDw) == RNF || MassWiseGet(MoveDw) == RPZ || MassWiseGet(MoveDw) == RPF ||
-        MassWiseGet(MoveDw) == RNZFS || MassWiseGet(MoveDw) == RNZFD)
-        PART_USE_Time_S[5]++; // * 下揉捏 计数s
-    if (MassWiseGet(MoveDw) == PD || MassWiseGet(MoveDw) == PDB || MassWiseGet(MoveDw) == RPZ || MassWiseGet(MoveDw) == RPF)
-        PART_USE_Time_S[6]++; // * 下拍打 计数s
+    // if (MSG4Move[MoveDw].Knead.Finish == 0)
+    method = MSG2Move[MoveDw].Knead.Method;
+    if (method == KNEAD_FWD || method == KNEAD_FWD_CLK || method == KNEAD_FWD_CNT ||
+        method == KNEAD_REV || method == KNEAD_REV_CLK || method == KNEAD_REV_CNT ||
+        method == KNEAD_BACK_FORTH || method == KNEAD_1F2R || method == KNEAD_1R2F ||
+        method == KNEAD_1F2F || method == KNEAD_1R2R) // todo md 260927
+        PART_USE_Time_S[5]++;
+    if (MSG2Move[MoveDw].Tap.Speed > 0)
+        PART_USE_Time_S[6]++; // * 拍打 计数s
+    if (MSG4Move[MoveDw].Tread.Finish == 0)
+        PART_USE_Time_S[7]++; // * 行走 计数s
 #endif
 }
 
@@ -86,20 +102,29 @@ void PartUse_Process_Min(void)
 {
     if (WorkStateGet() != WorkState_Work)
         return;
+    PART_USE_Time[10]++; // @ 总运行时间 260927
     if (AirModeGet() != AirModeClose)
-        PART_USE_Time[0]++; // * 气泵 计数min
-    PART_USE_Time[1] = PART_USE_Time_S[1] >> 6;
-    PART_USE_Time[2] = PART_USE_Time_S[2] >> 6;
-    PART_USE_Time[3]++; // * 行走 计数min
-    PART_USE_Time[4] = PART_USE_Time_S[4] >> 6;
-    PART_USE_Time[5] = PART_USE_Time_S[5] >> 6;
-    PART_USE_Time[6] = PART_USE_Time_S[6] >> 6;
+        PART_USE_Time[0]++;     // * 气泵 计数min
+    if (WorkMinGet() % 10 != 5) // @ 5分钟 15分钟 25分钟 保存运行时间 260927
+        return;
+    PART_USE_Time[1] = PART_USE_Time_S[1] / 60;
+    PART_USE_Time[2] = PART_USE_Time_S[2] / 60;
+    PART_USE_Time[3] = PART_USE_Time_S[3] / 60; // * 行走 计数min
+    PART_USE_Time[4] = PART_USE_Time_S[4] / 60;
 #ifdef USE_M2
-    PART_USE_Time[7]++; // * 下行走 计数min
+    PART_USE_Time[5] = PART_USE_Time_S[5] / 60;
+    PART_USE_Time[6] = PART_USE_Time_S[6] / 60;
+    PART_USE_Time[7] = PART_USE_Time_S[7] / 60; // * 下行走 计数min
 #endif
-    PART_USE_Time[8] = PART_USE_Time_S[8] >> 6;
-    PART_USE_Time[9] = PART_USE_Time_S[9] >> 6;
+    PART_USE_Time[8] = PART_USE_Time_S[8] / 60;
+    PART_USE_Time[9] = PART_USE_Time_S[9] / 60;
+
     Flash_PART_USE_Write();
+}
+
+uint32_t Part_USE_Get(u8 cnt)
+{
+    return PART_USE_Time[cnt];
 }
 #endif
 
@@ -696,5 +721,16 @@ void User_Memory_Use_DIY(void) // * 读取自定义数值
         DIY_packet[7] = 0x12;
         DIY_packet[8] = 0x22;
         DIY_packet[9] = 0x15;
+    }
+}
+
+void Flash_Check_Deal(void) // todo add 260821
+{
+    if (Flash_Check_Tick > 0) // * 修改成 关机保存
+    {
+        if (--Flash_Check_Tick == 0)
+        {
+            Flash_Parameter_Write();
+        }
     }
 }

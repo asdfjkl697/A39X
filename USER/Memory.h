@@ -7,8 +7,10 @@
 #define Max_Save_world sizeof(Save_struct) / sizeof(u16) // 当个存储字节数
 #define Max_Save 6										 // @  最大存储个数 4->6 增加两个给自定义
 
-#define Flash_Check_Time 150 // x * 100ms
+// #define Flash_Check_Time 150 // x * 100ms
+#define Flash_Check_Time 30 // x * 100ms //todo 3秒后存储
 extern uint16_t Flash_Check_Tick;
+extern void Flash_Check_Deal(void);
 
 extern u8 DIY_Save_Flag;
 extern bool Manual_Save_Flag;
@@ -65,7 +67,11 @@ typedef union
 	u16 Save_Value[Max_Save_world];
 } Union_Save;
 
+
 #ifdef PART_USE_SUM_TIME
+#define Max_USE_SUM 11
+extern uint32_t Part_USE_Get(u8 cnt); // @ AI 260927 定义在Memory.c, 供App.c显示总运行时间
+
 extern void Flash_PART_USE_read(void);
 extern void PartUse_Process_S(void);
 extern void PartUse_Process_Min(void);

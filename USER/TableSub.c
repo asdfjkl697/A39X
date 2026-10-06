@@ -1,5 +1,7 @@
 #include "Table.h"
 
+#ifndef USE_M2_4D
+
 //* Test
 const CoreMixOtherTabItem_t SubTab_TEST[] = {
 	{MoveUp_Knead, KNEAD_FIX_CIRCLE, MOVEUPWIDTH1, 0, 5},
@@ -111,10 +113,11 @@ const CoreMixOtherTabItem_t SubTab_STRA[] = {
 	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
 
 	// * 揉凤池穴
-	{MoveUp_Knead, KNEAD_1F2R, 0x96, 5, 0x85},
-	{MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_H0, 0, 5},
-	{MoveUp_Flex, FLEX_FIX_CIRCLE, 10, 0, 3},
-	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+	// {MoveUp_Knead, KNEAD_1F2R, 0x96, 5, 0x85},
+	// {MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_H0, 0, 5},
+	// {MoveUp_Flex, FLEX_FIX_CIRCLE, 10, 0, 3},
+	// {Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+	{Part_SUB2, ConMth_Loop, SUB2TB_RNFN, 5, 0},
 
 	{MoveUp_Flex, FLEX_FIX_CIRCLE, 5, 0, 3},
 	{Part_LOOP, 0, 3, 5, 0},
@@ -367,6 +370,7 @@ const CoreMixOtherTabItem_t SubTab_STRC[] = {
 	{Part_STOP, 0, 0, 0, 0},
 };
 
+
 //* STRD
 const CoreMixOtherTabItem_t SubTab_STRD[] = {
 	{Motor_Calf, MotorPart_STOP, 0, 0, 0},		   // todo add 260521
@@ -378,10 +382,12 @@ const CoreMixOtherTabItem_t SubTab_STRD[] = {
 	{MoveUp_Tap, FLAP_ACT, 0, 0, 2}, // @ add 260117
 	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
 	//* 5 风池穴揉捏
-	{MoveUp_Knead, KNEAD_REV_CNT, 3, 0, 6},
-	{MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_H0, 0, 2},
-	{MoveUp_Tap, FLAP_STOP, 0, 0, 0},
-	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+	// {MoveUp_Knead, KNEAD_REV_CNT, 3, 0, 6},
+	// {MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_H0, 0, 2},
+	// {MoveUp_Tap, FLAP_STOP, 0, 0, 0},
+	// {Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+	{Part_SUB2, ConMth_Loop, SUB2TB_TNFN, 5, 0},
+	{Part_SUB2, ConMth_Loop, SUB2TB_RNFN, 5, 0},
 	//* 6 肩部揉捏
 	{MoveUp_Knead, KNEAD_FWD_CNT, 3, 0, 6},
 	{MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_2, 0, 2},
@@ -2985,6 +2991,17 @@ const CoreMixOtherTabItem_t SubTab_HIPE[] = {
 	{Part_STOP, 0, 0, 0, 0},
 };
 
+//* HIPF
+// const CoreMixOtherTabItem_t SubTab_HIPF[] = {
+// 	{MoveUp_Tread, TREAD_FWD, 0, 0, 0},
+// 	{MoveUp_Knead, KNEAD_FWD_CLK, 100, 0, 0},
+
+// 	{Part_SUB, 0, SUBTB_TEST, 0, 0},
+// 	{Part_EXEC, ConMth_MoveUp, 5, 10, 0},
+
+// 	{Part_STOP, 0, 0, 0, 0},
+// };
+
 //* 子程序工作模式索引表
 ActionTabAttr_t SubMode_Addr[] = {
 	{SUBTB_CLOSE, NULL},
@@ -3072,3 +3089,5 @@ void SubMassMode_Load(u8 ID)
 		AtTabSet_ID(Table_Sub, ID);
 	}
 }
+
+#endif // USE_M2_4D

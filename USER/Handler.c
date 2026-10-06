@@ -213,6 +213,14 @@ void KeyCom_Handler(void)
 	{
 		u16 CRC_CheckSum;
 
+		// @ 添加边界检查 260810
+        if (KeyRx.RxCount >= MaxKeyData - 1)
+        {
+            KeyRx.RxCount = 0;
+            KeyRx.RxState = 0;
+            break;
+        }
+
 		KeyRx.RxBuffer[KeyRx.RxCount] = EUSART0_Read();
 		switch (KeyRx.RxState)
 		{

@@ -588,6 +588,21 @@
               <FilePath>.\USER\TableSub.c</FilePath>
             </File>
             <File>
+              <FileName>Table4D.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\Table4D.c</FilePath>
+            </File>
+            <File>
+              <FileName>TableDw4D.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\TableDw4D.c</FilePath>
+            </File>
+            <File>
+              <FileName>TableSub4D.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\USER\TableSub4D.c</FilePath>
+            </File>
+            <File>
               <FileName>MassageInit.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\USER\MassageInit.c</FilePath>

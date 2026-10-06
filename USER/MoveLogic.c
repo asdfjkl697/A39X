@@ -9,6 +9,9 @@ u8 ShoulderValue = 0;
 u8 BackPos = 0;
 u8 FlexSpeed = 0;
 u8 nBackIntensity; //* 3D强度 250308
+#ifdef USE_M2_4D
+u8 nBackIntensity_M2; // todo add 260108
+#endif
 u16 BodyArea[BodyPara];
 u16 BodyAreaDw[BodyPara];
 
@@ -20,6 +23,29 @@ MoveUpState_t MoveUpState;
 // #define BACK_UP_BASE 6
 #define BACK_UP_BASE 3
 const u8 BackIntensity_Base[] = {
+	BACK_UP_BASE + NECK_FLEX_ADD, // 0
+	BACK_UP_BASE + NECK_FLEX_ADD, // 1
+	BACK_UP_BASE + NECK_FLEX_ADD, // 2
+	BACK_UP_BASE,				  // 3
+	BACK_UP_BASE,				  // 4
+	BACK_UP_BASE,				  // 5
+	BACK_UP_BASE,				  // 6
+	3,							  // 7
+	4,							  // 8
+	6,							  // 9
+	8,							  // 10 //todo 单机芯另外调整 251011
+	4,							  // 11
+	3,							  // 12
+	0,							  // 13
+	0,							  // 14
+	0,							  // 14
+	0,							  // 14
+	0,							  // 14
+	0,							  // 14
+	0,							  // 14
+};
+#ifdef USE_M2_4D
+const u8 BackIntensity_Base_M2[] = {
 	BACK_UP_BASE, // 0
 	BACK_UP_BASE, // 1
 	BACK_UP_BASE, // 2
@@ -27,12 +53,12 @@ const u8 BackIntensity_Base[] = {
 	BACK_UP_BASE, // 4
 	BACK_UP_BASE, // 5
 	BACK_UP_BASE, // 6
-	3,			  // 7
-	4,			  // 8
-	6,			  // 9
-	8,			  // 10 //todo 单机芯另外调整 251011
-	4,			  // 11
-	3,			  // 12
+	BACK_UP_BASE, // 7
+	BACK_UP_BASE, // 8
+	BACK_UP_BASE, // 9
+	BACK_UP_BASE, // 10
+	BACK_UP_BASE, // 11
+	BACK_UP_BASE, // 12
 	0,			  // 13
 	0,			  // 14
 	0,			  // 14
@@ -41,6 +67,7 @@ const u8 BackIntensity_Base[] = {
 	0,			  // 14
 	0,			  // 14
 };
+#endif
 
 u8 AutoPro_Flex_Adjust(u8 flexpara) //* 上机芯伸缩矫正 250926
 {
@@ -72,6 +99,42 @@ u8 AutoPro_Flex_Adjust(u8 flexpara) //* 上机芯伸缩矫正 250926
 
 	return inten;
 }
+
+#ifdef USE_M2_4D
+u8 AutoPro_Flex_Adjust_M2(u8 flexpara) //* 上机芯伸缩矫正 250926
+{
+	u8 temp, inten;
+	u8 flex_weak = 0;
+	u16 intentemp;
+
+	inten = flexpara;
+	if (inten > 48)
+		inten = 48;
+#ifdef FLEX_WEAK
+	flex_weak = FLEX_WEAK;
+#endif
+	flex_weak += ASSIGN_Array[ASSIGN_Flex];
+	if (inten > 10 && flex_weak > 0)
+	{
+		if (flex_weak > 10)
+			flex_weak = 0;
+		intentemp = (inten - 10) * (10 - flex_weak); //* 伸缩调整
+		inten = intentemp / 10 + 10;
+	}
+
+	temp = BackIntensity_Base_M2[MoveDw_Circle / 58 + 1]; // todo md 260109
+	// temp /= 3;
+	if (AutoModeGet() == 0)
+		temp *= nBackIntensity_M2;
+	else
+		temp *= nBackIntensity; // todo md 260403
+	inten += temp;
+	if (inten > 65)
+		inten = 65;
+
+	return inten;
+}
+#endif
 
 uint8_t BackPosUpGet(void)
 {
@@ -170,9 +233,13 @@ void BodyPlaceCal(u16 circle)
 	BodyAreaDw[1] = 90; // @ add 260313
 	// BodyAreaDw[2] = 180;
 	BodyAreaDw[2] = 180 + ((SHOULDER_MIN * 11 - BodyArea[2]) / 6); // todo md 腰部位置调整 260403
-	//* 设置下机芯最高位置 30为额外富裕间距  250928
-	//* BodyAreaDw[4] 相当与腰部 下机芯速度较快
+																   //* 设置下机芯最高位置 30为额外富裕间距  250928
+																   //* BodyAreaDw[4] 相当与腰部 下机芯速度较快
+#ifdef USE_M2_4D
+	BodyAreaDw[9] = MoveDwMaxCircle - (MoveDw_UpSpace + 30 + BodyArea[0]);
+#else
 	BodyAreaDw[9] = MoveDwMaxCircle - ((MoveDw_UpSpace + 30 + BodyArea[0]) * 120 / 100);
+#endif
 	CheckData = BodyAreaDw[9] - BodyAreaDw[2];
 	// CheckData = BodyAreaDw[9] / 9;
 	// for (i = 8; i > 0; i--)
@@ -187,6 +254,8 @@ void BodyPlaceCal(u16 circle)
 	BodyAreaDw[LB_H0] = (BodyAreaDw[0] + BodyAreaDw[1]) >> 1;
 	BodyAreaDw[LB_H1] = (BodyAreaDw[1] + BodyAreaDw[2]) >> 1;
 	BodyAreaDw[LB_H2] = (BodyAreaDw[2] + BodyAreaDw[3]) >> 1;
+	BodyAreaDw[LB_H3] = (BodyAreaDw[3] + BodyAreaDw[4]) >> 1;
+	BodyAreaDw[LB_H5] = (BodyAreaDw[5] + BodyAreaDw[6]) >> 1;
 	BodyAreaDw[LB_H6] = (BodyAreaDw[6] + BodyAreaDw[7]) >> 1;
 	BodyAreaDw[LB_C0] = (BodyAreaDw[LB_H1] + BodyAreaDw[2]) >> 1;
 #else
@@ -226,7 +295,11 @@ void Get_M1_M2_AntiFlag(void)
 	MoveUp_Circle = MoveCurTreadCircleGet(MoveUp); //* 上机芯位置
 #ifdef USE_M2
 	temp = GetMoveDataTx(MoveDw)->Tread.CircleL | GetMoveDataTx(MoveDw)->Tread.CircleH << 8;
+#ifdef USE_M2_4D
+	MoveDw_Circle = MoveMaxCircle - temp; // todo 下机芯J28 260109
+#else
 	MoveDw_Circle = MoveMaxCircle - ((temp * MoveMaxCircle) / MoveDwMaxCircle); // * 下机芯位置 按比例变化后
+#endif
 	MoveSpace = MoveDw_Circle - MoveUp_Circle;
 	if (MassAreaGet(MoveUp) == Area_Part) // * 局部增加条件 251216
 	{

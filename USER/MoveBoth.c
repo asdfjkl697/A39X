@@ -65,6 +65,9 @@ void MoveDw_Updata_Clear(void)
 	MSG2Move[MoveDw].Tread.Update = 0;
 	MSG2Move[MoveDw].Knead.Update = 0;
 	MSG2Move[MoveDw].Tap.Update = 0;
+#ifdef USE_M2_4D
+	MSG2Move[MoveDw].Flex.Update = 0;
+#endif
 }
 
 void MoveDw_Updata_Set(u8 code)
@@ -75,6 +78,10 @@ void MoveDw_Updata_Set(u8 code)
 		MSG2Move[MoveDw].Knead.Update = 1;
 	if (code & 0x04)
 		MSG2Move[MoveDw].Tap.Update = 1;
+#ifdef USE_M2_4D
+	if (code & 0x08)
+		MSG2Move[MoveDw].Flex.Update = 1;
+#endif
 }
 #endif
 //* 机芯指令解析
@@ -112,8 +119,11 @@ void Part_Date_Set(u8 part, u8 update, u8 method, u8 para1, u8 para2, u8 speed)
 				temp = temp << 8 | para1;
 				if (MoveCurTreadCircleGet(MoveUp) > temp) // * 速度差异修正 251007 251010
 					follow_speed_sub = 1;
-
+#ifdef USE_M2_4D
+				temp += Move_Follow_Space; // todo md 260130
+#else
 				temp = (Move_Follow_Space + temp) * 120 / 100;
+#endif
 				if (temp > MoveDwMaxCircle)
 					tempdw = 0;
 				else
@@ -233,9 +243,11 @@ void Part_Date_Set(u8 part, u8 update, u8 method, u8 para1, u8 para2, u8 speed)
 			MSG2Move[MoveDw].Tap.Method = method;
 			MSG2Move[MoveDw].Tap.Para1 = para1;
 			MSG2Move[MoveDw].Tap.Para2 = para2;
+#ifndef USE_M2_4D
 			if (speed <= 8)
 				MSG2Move[MoveDw].Tap.Speed = speed + 2; //* 增加下机芯拍打速度
 			else
+#endif
 				MSG2Move[MoveDw].Tap.Speed = speed;
 		}
 #endif
@@ -252,9 +264,20 @@ void Part_Date_Set(u8 part, u8 update, u8 method, u8 para1, u8 para2, u8 speed)
 		else
 			MSG2Move[MoveUp].Flex.Para1 = AutoPro_Flex_Adjust(para1); //* 校正 251010
 
-		// AutoPro_Flex_Para = para1;
 		MSG2Move[MoveUp].Flex.Para2 = para2;
 		MSG2Move[MoveUp].Flex.Speed = speed;
+#ifdef USE_M2_4D
+		if (update > 0) //* 自动模式才跟随
+			break;
+		if (MoveFolw_Cmd.Flex_cmd == FOLW_COPY) // todo add 260117
+		{
+			Move_Flag[MoveDw].Flex_p = 1;
+			MSG2Move[MoveDw].Flex.Method = method;
+			MSG2Move[MoveDw].Flex.Para1 = AutoPro_Flex_Adjust_M2(para1);
+			MSG2Move[MoveDw].Flex.Para2 = para2;
+			MSG2Move[MoveDw].Flex.Speed = speed;
+		}
+#endif
 		break;
 	//* 注意下机芯行走长度 要设定原始的
 	case MoveDw_Tread:
@@ -290,6 +313,22 @@ void Part_Date_Set(u8 part, u8 update, u8 method, u8 para1, u8 para2, u8 speed)
 		MSG2Move[MoveDw].Tap.Speed = speed;
 		break;
 
+#ifdef USE_M2_4D
+	case MoveDw_Flex:
+		if (update > 0)
+			MSG2Move[MoveDw].Flex.Update = 1;
+		else
+			Move_Flag[MoveDw].Flex_p = 1;
+		MSG2Move[MoveDw].Flex.Method = method;
+		if (update > 0)
+			MSG2Move[MoveDw].Flex.Para1 = para1;
+		else
+			MSG2Move[MoveDw].Flex.Para1 = AutoPro_Flex_Adjust_M2(para1); // todo 待确定 260107
+
+		MSG2Move[MoveDw].Flex.Para2 = para2;
+		MSG2Move[MoveDw].Flex.Speed = speed;
+		break;
+#endif
 	default:
 		break;
 	}
@@ -712,6 +751,54 @@ void MSG2MoveUp_Deal(void)
 }
 
 #ifdef USE_M2
+#ifdef USE_M2_4D
+u8 MoveDw_Manual_Inten_Get(void)
+{
+	u8 temp;
+	switch (nBackIntensity_M2) // todo 下机芯强度需要重新定制 260108
+	{
+	default:
+	case 0:
+		if (MassWiseGet(MoveDw) == ZYS || MassWiseGet(MoveDw) == ZYD ||
+			MassWiseGet(MoveDw) == D3RNZ || MassWiseGet(MoveDw) == D3PD || MassWiseGet(MoveDw) == D3RPZ)
+			temp = 5;
+		else
+			temp = 0;
+		break;
+	case 1:
+		temp = 10;
+		break;
+	case 2:
+		temp = 20;
+		break;
+	case 3:
+		temp = 30;
+		break;
+	case 4:
+		temp = 40; //* 最大 65
+		break;
+	}
+	return temp;
+}
+
+void MoveDw_Manual_Update_Inten(void)
+{
+	u8 temp = MoveDw_Manual_Inten_Get();
+	u8 speed;
+	if (MassWiseGet(MoveDw) == ZYS || MassWiseGet(MoveDw) == D3RNZ || MassWiseGet(MoveDw) == D3PD || MassWiseGet(MoveDw) == D3RPZ)
+	{
+		speed = MassSpeedGet(MoveDw) << 1;
+		Part_Date_Set(MoveDw_Flex, 1, FLEX_BACK_FORTH, temp, 0, speed);
+	}
+	else if (MassWiseGet(MoveDw) == ZYD)
+	{
+		speed = MassSpeedGet(MoveDw) << 1;
+		Part_Date_Set(MoveDw_Flex, 1, FLEX_BACK_FORTH2, temp >> 1, temp, speed);
+	}
+	else
+		Part_Date_Set(MoveDw_Flex, 1, FLEX_FIX_CIRCLE, temp, 0, 3);
+}
+#endif
 void MoveDw_Manual_Wise_Deal(void) //* 下机芯手动手法处理
 {
 	u8 i, temp, speed;
@@ -747,7 +834,40 @@ void MoveDw_Manual_Wise_Deal(void) //* 下机芯手动手法处理
 		Part_Date_Set(MoveDw_Knead, 1, KNEAD_STOP, 0, 0, 0);
 		Part_Date_Set(MoveDw_Tap, 1, FLAP_BS, 30, 30, i);
 		break;
-#ifdef USE_S0555
+#ifdef USE_M2_4D
+	case ZYS:
+		Part_Date_Set(MoveDw_Tap, 1, FLAP_STOP, 0, 0, 0);
+		i = MoveDw_Manual_Inten_Get();
+		Part_Date_Set(MoveDw_Flex, 1, FLEX_BACK_FORTH, i, 0, speed);
+		break;
+
+	case D3RNZ:
+		Part_Date_Set(MoveDw_Knead, 1, KNEAD_FWD, 0, 0, speed);
+		Part_Date_Set(MoveDw_Tap, 1, FLAP_STOP, 0, 0, 0);
+		i = MoveDw_Manual_Inten_Get();
+		Part_Date_Set(MoveDw_Flex, 1, FLEX_BACK_FORTH, i, 0, speed);
+		break;
+
+	case D3PD:
+		Part_Date_Set(MoveDw_Knead, 1, KNEAD_STOP, 0, 0, 0);
+		Part_Date_Set(MoveDw_Tap, 1, FLAP_ACT, 0, 0, speed);
+		i = MoveDw_Manual_Inten_Get();
+		Part_Date_Set(MoveDw_Flex, 1, FLEX_BACK_FORTH, i, 0, speed);
+		break;
+
+	case D3RPZ:
+		Part_Date_Set(MoveDw_Knead, 1, KNEAD_FWD, 0, 0, speed);
+		Part_Date_Set(MoveDw_Tap, 1, FLAP_ACT, 0, 0, speed);
+		i = MoveDw_Manual_Inten_Get();
+		Part_Date_Set(MoveDw_Flex, 1, FLEX_BACK_FORTH, i, 0, speed);
+		break;
+
+	case ZYD:
+		Part_Date_Set(MoveDw_Tap, 1, FLAP_STOP, 0, 0, 0);
+		i = MoveDw_Manual_Inten_Get();
+		Part_Date_Set(MoveDw_Flex, 1, FLEX_BACK_FORTH2, i >> 1, i, speed);
+		break;
+#elif defined USE_S0555
 	case ZYS:
 		Part_Date_Set(MoveDw_Knead, 1, KNEAD_STOP, 0, 0, 0);
 		Part_Date_Set(MoveDw_Tap, 1, FLAP_ACT, 0, 0, 2);
@@ -761,11 +881,21 @@ void MoveDw_Manual_Wise_Deal(void) //* 下机芯手动手法处理
 	default:
 		break;
 	}
-
+#ifdef USE_M2_4D
+	if (temp == TZ || temp == PD || temp == PDB || temp == D3PD || temp == ZYS || temp == ZYD)
+	{
+		Move_Manual_Update_Width(MoveDw);
+	}
+	if (temp == TZ || temp == RNZ || temp == PD || temp == RPZ || temp == PDB)
+	{
+		MoveDw_Manual_Update_Inten(); // *  手动都修改伸缩 250901
+	}
+#else
 	if (temp == TZ || temp == PD || temp == PDB)
 	{
 		Move_Manual_Update_Width(MoveDw);
 	}
+#endif
 }
 /*****************************************************************************************************
  * 描述：发送数据给下机芯 新协议
@@ -791,6 +921,15 @@ void MoveDw_Manual_Deal(void) // * add 250901
 		if (Move_Update_Get(MoveDw) == 0)
 			return;
 	}
+#ifdef USE_M2_4D
+	if (Move_Flag[MoveDw].Inten)
+	{
+		Move_Flag[MoveDw].Inten = 0;
+		MoveDw_Manual_Update_Inten(); //* 顶出变化更新
+		if (Move_Update_Get(MoveDw) == 0)
+			return;
+	}
+#endif
 	MoveDw_Manual_Wise_Deal();
 }
 

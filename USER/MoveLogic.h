@@ -13,13 +13,20 @@
 #define MoveArea_Space 35 // * 局部动作区域 25->50->35 250925
 
 #ifdef USE_M2
-#define Follow_Space 260		  //* 跟随距离 251007
+#define Follow_Space 260 //* 跟随距离 251007
+#ifdef USE_M2_4D
+#define MoveUp_Avoid_Position 310 // todo md 260126
+#define MoveMaxCircle 649		  // * 最大圈数
+#define MoveDwMaxCircle 649		  // todo md 260126
+#define MoveDw_UpSpace 238		  // todo md 260126
+#define MoveUp_Limit 400		  // todo 430->400 260126
+#else
 #define MoveUp_Avoid_Position 340 // * 上机芯回避位置 250923
 #define MoveMaxCircle 649		  // * 最大圈数
 #define MoveDwMaxCircle 780		  // * md 下机芯与上机芯比例 575->649->780
 #define MoveDw_UpSpace 217		  // * 碰撞阈值 md 250923 220-217 250928
 #define MoveUp_Limit 430		  /* 实际测试 250923*/
-
+#endif
 #define MoveDw_Waist 200 /*设置下机芯腰部 BodyAreaDw[2] 250928*/
 #else
 #define MoveMaxCircle 649 /* MoveMaxCircle 需要根据实际情况调试 250514 */
@@ -49,6 +56,8 @@ typedef enum
 	LB_H0, // * 增加 250623
 	LB_H1, //* 增加 250504
 	LB_H2,
+	LB_H3,
+	LB_H5,
 	LB_H6,
 	LB_H7,
 	LB_H8,
@@ -66,6 +75,9 @@ typedef enum
 #define BodyPara LQS_DW + 1 // * md 251011
 
 extern u8 nBackIntensity;
+#ifdef USE_M2_4D
+extern u8 nBackIntensity_M2; // todo add 260108
+#endif
 
 typedef struct
 {
@@ -140,4 +152,8 @@ extern void M1_M2_void(void);
 
 // extern void AutoPro_Flex_Adjust(void);
 extern u8 AutoPro_Flex_Adjust(u8 flexpara);
+#ifdef USE_M2_4D
+extern uint16_t MoveDw_Circle;
+extern u8 AutoPro_Flex_Adjust_M2(u8 flexpara);
+#endif
 #endif

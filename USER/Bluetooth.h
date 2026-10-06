@@ -19,6 +19,7 @@ extern bool SoundWave_M1_Paradox_Flag;
 extern u8 nVolume_SoundWave;
 extern u8 nVolume_SoundWave_Real;
 extern u8 nVolume_Real;
+extern bool BREDR_Iint_Flag;
 #endif
 extern u8 nVolume; // 音量
 extern u8 Blue_At_Re;

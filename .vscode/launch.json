@@ -1,0 +1,28 @@
+{
+    // F5: 编译 + 用 J-Link 烧录并进入调试
+    // 依赖 VS Code 扩展: marus25.cortex-debug (cortex-debug)
+    // 依赖软件: SEGGER J-Link (JLinkGDBServerCL.exe 需在 PATH 或已装驱动)
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "J-Link 烧录调试 (GD32F303VG)",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "jlink",
+            "serverpath": "C:/Program Files/SEGGER/JLink_V796/JLinkGDBServerCL.exe",
+            "device": "GD32F303VG",
+            "interface": "swd",
+            "executable": "${workspaceFolder}/build/A39X.elf",
+            "runToEntryPoint": "main",
+            "preLaunchTask": "一键编译",
+             "liveWatch": {
+                "enabled": true,
+                "samplesPerSecond": 1
+            },
+            "overrideRestartCommands": [
+                "monitor reset",
+                "monitor halt"
+            ],
+        }
+    ]
+}

@@ -33,11 +33,8 @@
 #define UCHAR unsigned char
 #define UINT unsigned short int
 
-/* stdint-compatible aliases (used by vendor library code) */
-#define uint8_t unsigned char
-#define uint16_t unsigned short int
-#define uint32_t unsigned int
-
+/* uint8_t/uint16_t/uint32_t 已由 <stdint.h> 提供 (经 gd32f30x.h -> core_cm4.h 引入),
+   切勿用 #define 重定义 —— 会把 typedef 覆盖成宏, 导致跨文件类型冲突 */
 typedef struct
 {
     const u8 *p;
@@ -80,7 +77,7 @@ extern UnionBit UnionState_Flash;
 #define nVoiceControlSw UnionState.StrackBit.BIT6 //* 声控
 #define nSoundMusicSW UnionState.StrackBit.BIT7   //* 音乐开关
 
-#define nManualPlay UnionState2.StrackBit.BIT2 // * 手动播放标志位
+#define nBluePlay UnionState2.StrackBit.BIT2 // * 手动播放标志位
 // #define nAutoUp UnionState2.StrackBit.BIT0
 // #define nLedSensor UnionState2.StrackBit.BIT1
 #define nPowerOn UnionState2.StrackBit.BIT6

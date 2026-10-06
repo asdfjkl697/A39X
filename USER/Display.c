@@ -330,9 +330,9 @@ char device_Model[] = "{model A391S-5 soft V1.0 firm V1.0 }";
 #elif defined A391S_6
 char device_Model[] = "{model A391S-6 soft V1.0 firm V1.0 }";
 #elif defined A391S_8
-char device_Model[] = "{model A391S-8 soft V1.0 firm V1.0 }";
+char device_Model[] = "{model null soft V1.0 firm V1.0 }";
 #elif defined A391S_31
-char device_Model[] = "{model Virtus  soft V1.3 firm V1.3 }";
+char device_Model[] = "{model Virtus  soft V1.4 firm V1.4 }";
 #elif defined A391S_32
 char device_Model[] = "{model A391S-32  soft V1.1 firm V1.1 }";
 #elif defined A391S_33
@@ -356,21 +356,31 @@ char device_Model[] = "{model A390S-9  soft V1.0 firm V1.0 }";
 #elif defined A390S_36
 char device_Model[] = "{model A390S-36 soft V1.1 firm V1.1 }";
 #elif defined A390S_20
-char device_Model[] = "{model AURORA soft V1.0 firm V1.0 }";
+char device_Model[] = "{model A390S-20 soft V1.0 firm V1.0 }";
+#elif defined A393S_20
+char device_Model[] = "{model A393S_20 soft V1.0 firm V1.0 }";
 #elif defined A390S_31
 char device_Model[] = "{model A390S-31 soft V1.0 firm V1.0 }";
 #elif defined A390S_32
 char device_Model[] = "{model A390S-32 soft V1.0 firm V1.0 }";
 #elif defined A390S_33
 char device_Model[] = "{model A390S-33 soft V1.0 firm V1.0 }";
+#elif defined A390S_11
+char device_Model[] = "{model A390S-11 soft V1.0 firm V1.0 }";
+#elif defined A390S_10
+char device_Model[] = "{model Premium soft V1.0 firm V1.0 }";
 #elif defined A390S_35
 char device_Model[] = "{model A390S-35 soft V1.0 firm V1.0 }";
 #elif defined A393S_2
 char device_Model[] = "{model A393S-2  soft V1.0 firm V1.0 }";
+#elif defined A393S_5
+char device_Model[] = "{model A393S-5  soft V1.0 firm V1.0 }";
 #elif defined A395SY_2
-char device_Model[] = "{model A395SY-2  soft V1.0 firm V1.0 }";
+char device_Model[] = "{model A395SY-2  soft V1.1 firm V1.1 }";
 #elif defined A395SY
-char device_Model[] = "{model A395SY soft V1.0 firm V1.0 }";
+char device_Model[] = "{model null soft V1.0 firm V1.0 }";
+#elif defined A395SY_6
+char device_Model[] = "{model null soft V1.0 firm V1.0 }";
 #elif defined A393SY_2
 char device_Model[] = "{model A393SY-2  soft V1.0 firm V1.0 }";
 #elif defined A396SY_2
@@ -403,7 +413,7 @@ void Display_Drive_A1(void)
 	uint8_t i;
 #endif
 #ifdef USE_M2
-	uint16_t M2Circle;
+	
 #endif
 	u8 temp, width, method;
 
@@ -448,7 +458,7 @@ void Display_Drive_A1(void)
 		Display.Byte3.Bit.MovementPosition_Upper = 12 - BackPosUpGet(); // * 修改 最下端1点
 
 #ifdef USE_M2
-	M2Circle = GetMoveDataTx(MoveDw)->Tread.CircleH << 8 | GetMoveDataTx(MoveDw)->Tread.CircleL;
+	uint16_t M2Circle = GetMoveDataTx(MoveDw)->Tread.CircleH << 8 | GetMoveDataTx(MoveDw)->Tread.CircleL;
 	Display.Byte3.Bit.MovementPosition_Lower = M2Circle / 58 + 1; /* 下机芯位置 (0-505)/51 250924 */
 #else
 	Display.Byte3.Bit.MovementPosition_Lower = 0;
@@ -487,8 +497,20 @@ void Display_Drive_A1(void)
 		Display.Byte7.Bit.Intensity4D = nBackIntensity + 1;
 		if (AutoModeGet() == 0)
 		{
-			Display.Byte7.Bit.MassageSpeed = MassSpeedGet(MoveUp);	 /* 按摩速度 上机芯 */
-			Display.Byte8.Bit.WidthValue = MassWidthGet(MoveUp) + 1; /* 按摩宽度 上机芯 */
+			if ((TZ == MassWiseGet(MoveUp)) || (ZYS == MassWiseGet(MoveUp)))
+			{
+				Display.Byte7.Bit.MassageSpeed = 0;
+			}
+			else
+				Display.Byte7.Bit.MassageSpeed = MassSpeedGet(MoveUp); /* 按摩速度 上机芯 */
+
+			if ((RNZ == MassWiseGet(MoveUp)) || (RPZ == MassWiseGet(MoveUp)) || (D3RNZ == MassWiseGet(MoveUp)) ||
+				(D3RPZ == MassWiseGet(MoveUp)) || (JRZ == MassWiseGet(MoveUp)))
+			{
+				Display.Byte8.Bit.WidthValue = 0;
+			}
+			else
+				Display.Byte8.Bit.WidthValue = MassWidthGet(MoveUp) + 1; /* 按摩宽度 上机芯 */
 		}
 		else // * 手动 自动 速度宽度显示分开 250924
 		{
@@ -509,14 +531,21 @@ void Display_Drive_A1(void)
 					temp = (30 - temp) / 7;
 				else if (width > 35)
 					temp = (width - 35) / 7;
+				Display.Byte8.Bit.WidthValue = temp + 1;
 			}
-			Display.Byte8.Bit.WidthValue = temp + 1; /* 按摩宽度 上机芯 */
+			else
+			{
+				Display.Byte8.Bit.WidthValue = 0;
+			}
 		}
 	}
 #ifdef USE_M2
 	else if (MoveDw == MoveWhichGet())
 	{
-		Display.Byte8.Bit.AreaValue = 4;						 // * 下机芯只有定点 250218
+		Display.Byte8.Bit.AreaValue = 4; // * 下机芯只有定点 250218
+#ifdef USE_M2_4D
+		Display.Byte7.Bit.Intensity4D = nBackIntensity_M2 + 1; // todo add 260109
+#endif
 		Display.Byte7.Bit.MassageSpeed = MassSpeedGet(MoveDw);	 /* 按摩速度 下机芯 */
 		Display.Byte8.Bit.WidthValue = MassWidthGet(MoveDw) + 1; /* 按摩宽度 下机芯 */
 	}
@@ -568,7 +597,9 @@ void Display_Drive_A1(void)
 #else
 	Display.Byte13.Bit.CalfKnead = 0;
 #endif
-	Display.Byte13.Bit.Ion = nIonState;			  /* 负氧离子开关 */
+#ifdef USE_ION
+	Display.Byte13.Bit.Ion = nIonState; /* 负氧离子开关 */ // todo 没有负氧离子 260818
+#endif
 	Display.MassageStrength = UserIntensityGet(); /* 力度模式 0：轻揉 1：舒缓 2：强劲 */
 	Display.EorValue = nAllEor;					  /* 错误提示 */
 	Display.IDCode1 = 6; /* 序列号 */			  //* 目前无效 250324
@@ -597,19 +628,19 @@ void Display_Drive_A1(void)
 			Display.WiseValue = 2;
 			Display.Byte8.Bit.WidthValue = 0;
 			break;
-#ifdef USE_S0555
+
 		case PD:
 			Display.WiseValue = 3;
 			break;
-		case PDB:
-			Display.WiseValue = 4;
-			break;
 		case RPZ:
 		case RPZB:
-			Display.WiseValue = 5;
+			Display.WiseValue = 4;
 			Display.Byte8.Bit.WidthValue = 0;
 			break;
-
+		case PDB:
+			Display.WiseValue = 5;
+			break;
+#ifdef USE_S0555
 		case ZYS:
 			Display.WiseValue = 6;
 			Display.Byte7.Bit.MassageSpeed = 0;
@@ -641,17 +672,7 @@ void Display_Drive_A1(void)
 			Display.WiseValue = 12;
 			break;
 #else
-		case PD:
-			Display.WiseValue = 3;
-			break;
-		case RPZ:
-		case RPZB:
-			Display.WiseValue = 4;
-			Display.Byte8.Bit.WidthValue = 0;
-			break;
-		case PDB:
-			Display.WiseValue = 5;
-			break;
+
 		case ZY:
 		case ZYS:
 			Display.WiseValue = 6;
@@ -697,19 +718,19 @@ void Display_Drive_A1(void)
 			Display.WiseValue = 2;
 			Display.Byte8.Bit.WidthValue = 0;
 			break;
-#ifdef USE_S0555
+
 		case PD:
 			Display.WiseValue = 3;
 			break;
-		case PDB:
-			Display.WiseValue = 4;
-			break;
 		case RPZ:
 		case RPZB:
-			Display.WiseValue = 5;
+			Display.WiseValue = 4;
 			Display.Byte8.Bit.WidthValue = 0;
 			break;
-
+		case PDB:
+			Display.WiseValue = 5;
+			break;
+#ifdef USE_S0555
 		case ZYS:
 			Display.WiseValue = 6;
 			Display.Byte7.Bit.MassageSpeed = 0;
@@ -741,18 +762,7 @@ void Display_Drive_A1(void)
 			Display.WiseValue = 12;
 			break;
 #else
-		case PD:
-			//			case PDB:
-			Display.WiseValue = 3;
-			break;
-		case RPZ:
-		case RPZB:
-			Display.WiseValue = 4;
-			Display.Byte8.Bit.WidthValue = 0;
-			break;
-		case PDB:
-			Display.WiseValue = 5;
-			break;
+
 		case ZY:
 		case ZYS:
 			Display.WiseValue = 6;
@@ -798,7 +808,7 @@ void Display_Drive_A1(void)
 	Display.Memory = Memorystate; /* 存储状态 */
 	Display.Byte30 = 0;			  //@ 工程模式 暂无
 #ifdef USE_SOUNDWAVE
-	Display.Byte31 = nVolume_SoundWave;
+	Display.Byte31 = nVolume_SoundWave / 3; // todo md 260803
 	if (BlueState_Play && nPlay_Device == 2)
 	{
 		switch (Blue_Play_ID1)
@@ -834,8 +844,8 @@ void Display_Drive_A1(void)
 
 		case VC_YBMusic3:
 			Display.SoundNum = 6 << 2;
-			Display.SoundMin = 2;
-			Display.SoundSec = 31;
+			Display.SoundMin = 5;
+			Display.SoundSec = 1;
 			break;
 
 		case VC_YBMusic4:
@@ -852,6 +862,39 @@ void Display_Drive_A1(void)
 		Display.SoundNum |= 2;
 	else
 		Display.SoundNum |= 1;
+#endif
+#ifdef USE_HEALTH_AUTO_NUM
+	// todo 疲劳程度 0-3 对应程序由主板控制 260918
+	switch (Health_Tired) 
+	{
+#ifdef VIETNAM_VOICE
+	case 0:
+		Display.Health_Auto_Num = 16;
+		break;
+	case 1:
+		Display.Health_Auto_Num = 1;
+		break;
+	case 2:
+		Display.Health_Auto_Num = 6;
+		break;
+	case 3:
+		Display.Health_Auto_Num = 3;
+		break;
+#else
+	case 0:
+		Display.Health_Auto_Num = 4;
+		break;
+	case 1:
+		Display.Health_Auto_Num = 1;
+		break;
+	case 2:
+		Display.Health_Auto_Num = 3;
+		break;
+	case 3:
+		Display.Health_Auto_Num = 5;
+		break;
+#endif
+	}
 #endif
 	/*==================================================================================*/
 	memcpy(&Display_Data[9], &Display, sizeof(Display));
@@ -985,7 +1028,7 @@ void Display_Drive_A4(void)
 	// @ add 260306 从右到左
 	Display_Data[11] = 0x21; //* 1复位 2童锁
 	Display_Data[12] = 0x43; //* 3蓝牙 4LED
-	Display_Data[13] = 0x56; //* 5背景 6声控
+	Display_Data[13] = 0x65; //* 5背景 6声控
 	Display_Data[14] = 0x07; //* 7语音 8负氧
 	Display_Data[15] = 0x09; //* 音量 音波
 #elif defined USE_S0551

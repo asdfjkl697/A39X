@@ -1,7 +1,7 @@
 #include "Bluetooth.h"
-#include "fmc.h"       //* 增加
-#include "FUJIApp.h"   //@ add 260303
-#include "FUJIOTA.h"   //@ OTA Send_Pro
+#include "fmc.h"     //* 增加
+#include "FUJIApp.h" //@ add 260303
+#include "FUJIOTA.h" //@ OTA Send_Pro
 
 u32 UserCode_data = 0;
 #ifdef USE_SOUNDWAVE
@@ -205,6 +205,11 @@ static void BlueBoard_Send_Data3(u8 nCom, u8 nData)
     tx2_checksum = 0;
     EUSART2_Write(0xA2);
     EUSART2_Write(nCom);
+#if 1
+    EUSART2_Write(0x09); // 固定13位
+    EUSART2_Write(0x2F); //
+    EUSART2_Write(0x41); // * A
+#else
     EUSART2_Write(0x0D); // 固定13位
     EUSART2_Write(0x2F); //
     EUSART2_Write(0x41); // * A
@@ -212,6 +217,7 @@ static void BlueBoard_Send_Data3(u8 nCom, u8 nData)
     EUSART2_Write(0x39); // * 9
     EUSART2_Write(0x35); // * 5
     EUSART2_Write(0x53); // * S
+#endif
     EUSART2_Write(0x2A); // *
     EUSART2_Write(0x2F); // "/"
     temp1 = nData / 10;
@@ -326,8 +332,17 @@ static void Blue_Ascii_Re(u8 nData) // 接收字符串
         }
         else if (User_found_strs((char *)nBuf, "BT_OK", '\n') == 1)
             Blue_At_Re |= 0x01;
+#ifdef USE_SOUNDWAVE
+        else if (User_found_strs((char *)nBuf, "BREDR=DIS", '\n') == 1)
+#else
         else if (User_found_strs((char *)nBuf, "BREDR_DIS", '\n') == 1)
+#endif
+        {
             Blue_At_Re |= 0x02;
+#ifdef USE_SOUNDWAVE
+            Blue_At_Re &= 0xef; // todo test 260825
+#endif
+        }
         else if (User_found_strs((char *)nBuf, "NA:", '\n') == 1)
         {
             if (User_found_strs((char *)nBuf, Blue_Name, '\n') == 0)
@@ -336,7 +351,12 @@ static void Blue_Ascii_Re(u8 nData) // 接收字符串
             }
         }
         else if (User_found_strs((char *)nBuf, "BREDR=EN", '\n') == 1)
+        {
             Blue_At_Re |= 0x10;
+#ifdef USE_SOUNDWAVE
+            Blue_At_Re &= 0xfd; // todo test 260825
+#endif
+        }
         else if (User_found_strs((char *)nBuf, "LE=EN", '\n') == 1)
             Blue_At_Re |= 0x20;
         else if (User_found_strs((char *)nBuf, "RECON=EN", '\n') == 1)
@@ -370,8 +390,8 @@ void os_task_BlueRx(void) // 蓝牙串口处理
         AppCom(nData);
 #endif
     }
-#if (USE_BLUE_APP == 8)
-    if (WorkStateGet() != WorkState_Work && nVolume == 1)
+#if (USE_BLUE_OTA == 1)
+    if (WorkStateGet() == WorkState_Pause && nVolume == 1)
     {
         FUJIApp_Recieve(); // 帧解析 (IDLE触发后while可能为空, 此位置确保执行)
     }
@@ -379,6 +399,25 @@ void os_task_BlueRx(void) // 蓝牙串口处理
 #endif
 }
 
+#ifdef USE_SOUNDWAVE
+bool BREDR_Iint_Flag = 0;
+u32 BREDR_Iint_Tick = 0;
+void BREDR_Iint_Delay(void) // todo 延时修改蓝牙开关 260825
+{
+    if (TICK_COUNTER(BREDR_Iint_Tick, 3000) && BREDR_Iint_Flag == 0)
+    {
+        BREDR_Iint_Flag = 1;
+        if (nBlueState) // * 测试关闭蓝牙 背景音乐停止时间过长 250412
+        {
+            Blue_OnOff(1);
+        }
+        else
+        {
+            Blue_OnOff(0);
+        }
+    }
+}
+#endif
 void os_task_blue(u8 nTask_ID)
 {
     // KEIL一般分配临时变量在RAM不在堆栈
@@ -393,7 +432,6 @@ void os_task_blue(u8 nTask_ID)
     while ((Blue_At_Re & 0x03) == 0)
     {
         Pt_Wait_Tick(3);
-
         if (++Blue_Over_Time > 250)
         {
             Blue_Over_Time = 0;
@@ -448,6 +486,16 @@ void os_task_blue(u8 nTask_ID)
     Pt_Wait_Tick(50);
 #endif
 
+#ifdef USE_SOUNDWAVE
+    if (Blue_At_Re & 0x02 && BREDR_Iint_Flag == 0) // todo 对比测试 260825
+    {
+        PrintString2("AT+FUN=BREDR=EN\r\n");
+        Pt_Wait_Tick(50);
+        blue_Update_bit = 1;
+        TICK_RESET(BREDR_Iint_Tick);
+        // BREDR_Iint_Flag = 1; // todo 初始化完成
+    }
+#else
     if (Blue_At_Re & 0x10) // 经典蓝牙
     {
         if (nBlueState == 0)
@@ -466,6 +514,7 @@ void os_task_blue(u8 nTask_ID)
             blue_Update_bit = 1;
         }
     }
+#endif
 
     if (Blue_At_Re & 0x20) // 数据蓝牙
     {
@@ -569,10 +618,10 @@ void os_task_voice(u8 nTask_ID)
         // Pt_Wait_Sig(nPlay_ID == VoicePlayID && nPlay_State == Play_State_Run && nPlay_time > 0); // 等待操作完成
         Pt_Wait_Sig(insertSta == 1 && nPlay_time > 0); // todo add 260630
 #else
-        BlueBoard_Send_Data2(0x23, VoicePlayID); // 插播指令
-        BlueBoard_Send_Data1(0x10, nVolume);     // 音量
-        Pt_Wait_Tick(50);                        // 250ms
-        blue_a3_ok = 0;
+        BlueBoard_Send_Data2(0x23, VoicePlayID);        // 插播指令
+        BlueBoard_Send_Data1(0x10, nVolume);            // 音量
+        Pt_Wait_Tick(50);                               // 250ms
+        blue_a3_ok = 0;                                 // 先清掉轮询残留的应答标志
         Pt_Wait_Sig(blue_a3_ok == 0 && nPlay_time > 0); // 等待操作完成
 #endif
 
@@ -583,16 +632,21 @@ void os_task_voice(u8 nTask_ID)
             nPlay_time = 0;
         else
         {
+            // 语音未应答时不重启模块：AT+RESET 会掉 BLE，正是「app 按键无反应」的根因。
+            // 只放弃本次播报，保持 BLE 连接；模块语音异常留待下次上电自恢复。
+            // todo AI rm for app 261005
+#if (USE_BLUE_APP == 0)
             Blue_At_Re = 0;
             Blue_Over_Time = 251;
             Pt_Reset_ID(TASK_ID_BLUE); // 重新配置蓝牙
+#endif
         }
 
         VoicePlayID = 0;
 #ifdef USE_SOUNDWAVE
         if (WorkStateGet() == WorkState_Reset || WorkStateGet() == WorkState_Wait)
             BlueBoard_Send_Data1(0x16, 0);
-        else if (nMusicSW && nSoundMusicSW)
+        else if ((nMusicSW || nBluePlay) && nSoundMusicSW)
             BlueBoard_Send_Data1(0x16, nVolume * 2 + nVolume_Cal);
         else
             BlueBoard_Send_Data1(0x16, 0);
@@ -615,7 +669,10 @@ void os_task_voice(u8 nTask_ID)
             {
                 if (nPlay_State == Play_State_Run) // 记录SD播放状态
                     bPause = 1;
-
+#ifdef USE_SOUNDWAVE
+                nBluePlay = 1;
+                nVolume_Real = nVolume; // TODO add 260822
+#endif
                 BlueBoard_Send_Data1(0x13, 0x04);
                 Pt_Wait_Tick(10);
             }
@@ -626,6 +683,7 @@ void os_task_voice(u8 nTask_ID)
             {
                 BlueBoard_Send_Data1(0x13, 0x01);
 #ifdef USE_SOUNDWAVE
+                nBluePlay = 0;
                 Pt_Wait_Tick(200); // @ 测试 260325
 #else
                 Pt_Wait_Tick(100);
@@ -733,7 +791,7 @@ void os_task_voice(u8 nTask_ID)
         }
         if ((nPlay_nVolume != (nVolume_Real * 2 + nVolume_Cal))) // 音量核对
         {
-            if (nMusicSW && nSoundMusicSW)
+            if ((nMusicSW || nBluePlay) && nSoundMusicSW) // todo md 260821
             {
                 if (nVolume_Real == 0)
                     BlueBoard_Send_Data1(0x16, 0);
@@ -745,7 +803,7 @@ void os_task_voice(u8 nTask_ID)
             Pt_Wait_Tick(10);
         }
 
-        if (WorkStateGet() == WorkState_Work) // @ 处理音波恢复
+        if (WorkStateGet() == WorkState_Work && nSoundWaveSW) // @ 处理音波恢复
         {
             if (nVolume_SoundWave_Real == 0)
             {
@@ -760,7 +818,7 @@ void os_task_voice(u8 nTask_ID)
 
         if ((Wave_Play_nVolume != (nVolume_SoundWave_Real / 3 + nVolume_SoundWave_Cal))) // 音量核对
         {
-            if (nMusicSW && nSoundWaveSW)
+            if ((nMusicSW || nBluePlay) && nSoundWaveSW) // todo md 260821
             {
                 if (nVolume_SoundWave_Real == 0)
                     BlueBoard_Send_Data1(0x17, 0);
@@ -800,6 +858,9 @@ void BluePlay_time(void)
     {
         nPlay_time--;
     }
+#ifdef USE_SOUNDWAVE
+    BREDR_Iint_Delay(); // todo 增加延时补丁 260825
+#endif
 }
 
 void Blue_Init(void)
@@ -873,12 +934,16 @@ void Blue_Init(void)
     User_Copy_Str(Blue_Name, "020.002299-"); // 拷贝蓝牙名称前缀
 #elif defined A390S_8
     User_Copy_Str(Blue_Name, "Poltrona Zenith-"); // 拷贝蓝牙名称前缀
-#elif defined A395SY_2 || defined A395SY
-    User_Copy_Str(Blue_Name, "A395SY-"); // 拷贝蓝牙名称前缀
+// #elif defined A395SY_2 || defined A395SY
+//     User_Copy_Str(Blue_Name, "A395SY-"); // 拷贝蓝牙名称前缀
 #elif defined A393SY_2
     User_Copy_Str(Blue_Name, "A393SY-"); // 拷贝蓝牙名称前缀
 #elif defined A396SY_2
     User_Copy_Str(Blue_Name, "A396SY-"); // 拷贝蓝牙名称前缀
+#elif defined A391S_8
+    User_Copy_Str(Blue_Name, "L6SPRO-"); // 拷贝蓝牙名称前缀
+#elif defined A396S_1
+    User_Copy_Str(Blue_Name, "L6SMAX-"); // 拷贝蓝牙名称前缀
 #else
     User_Copy_Str(Blue_Name, "IMCM-");
 #endif
@@ -931,19 +996,6 @@ void Voice_Ack(u8 nId)
 #endif
         return;
 
-    // #ifdef VIETNAM_VOICE
-    //     if (nVoicePlayer == 0)
-    // #else
-    //     if (nVoicePlayer == 0 && nId > VC_SitDown) /** 语音播报 不关闭声控对应词条 250320 */
-    // #endif
-    //         return;
-
-    //     // * A391 定改制 250614
-    // #if (defined VOICE_PLAY_OFF) && (defined VIETNAM_VOICE)
-    //     if (nId > VC_OK)
-    //         return;
-    // #endif
-
     Pt_Reset_ID(TASK_ID_VOICE);
     VoicePlayID = nId;
 }
@@ -967,7 +1019,11 @@ void BlueState_Play_Deal(void)
 #ifdef USE_SOUNDWAVE
     switch (temp1)
     {
+    case 0:
     case 1:
+    case 6 ... 16:
+    case 18:
+    case 19:
     case 26:
         temp = VC_YBMusic2;
         break;
@@ -978,6 +1034,8 @@ void BlueState_Play_Deal(void)
         temp = VC_YBMusic3;
         break;
     case 4:
+    case 17:
+    case 20:
         temp = VC_Music1;
         break;
     case 5:
@@ -985,8 +1043,8 @@ void BlueState_Play_Deal(void)
         break;
 
     default:
-        nSoundMusicSW = 0;
-        nSoundWaveSW = 0; // todo add test 260707
+        // nSoundMusicSW = 0;
+        // nSoundWaveSW = 0; // todo add test 260707
         BlueState_Play = 0;
         Blue_Play_ID1 = 0;
         Blue_Play_ID2 = 0;
@@ -994,12 +1052,12 @@ void BlueState_Play_Deal(void)
         break;
     }
 
-    if (nMusicSW && nManualPlay) // todo 手动播放 260707
-    {
-        nManualPlay = 0;
-        Flash_Parameter_read();
-        temp = VC_YBMusic2;
-    }
+    // if (nMusicSW && nManualPlay) // todo 手动播放 260707
+    // {
+    //     nManualPlay = 0;
+    //     Flash_Parameter_read();
+    //     temp = VC_YBMusic2;
+    // }
 
     if ((BlueState_Play == 0 || Blue_Play_ID1 != temp || Blue_Play_ID2 != temp) && temp > 0 && nMusicSW && (nSoundMusicSW || nSoundWaveSW)) // * 增加 nMusicSW>0
     {
@@ -1058,7 +1116,7 @@ void BlueState_Play_Deal(void)
 #ifdef USE_SOUNDWAVE
 void Change_Sound(void) // @ add 251212
 {
-    if (nMusicSW == 0 || (nSoundMusicSW == 0 && nSoundWaveSW == 0))
+    if ((nMusicSW == 0 && nBluePlay == 0) || (nSoundMusicSW == 0 && nSoundWaveSW == 0))
     {
         // @ 已经处理，此处待定 260325
         nVolume_Real = 0;
@@ -1066,7 +1124,7 @@ void Change_Sound(void) // @ add 251212
         return;
     }
 
-    if (nMusicSW && nSoundMusicSW)
+    if ((nMusicSW || nBluePlay) && nSoundMusicSW)
     {
         nVolume_Real = nVolume;
         if (nVolume_Real == 0)
@@ -1080,7 +1138,7 @@ void Change_Sound(void) // @ add 251212
         BlueBoard_Send_Data1(0x16, 0);
     }
 
-    if (nMusicSW && nSoundWaveSW)
+    if ((nMusicSW || nBluePlay) && nSoundWaveSW)
     {
         // nVolume_SoundWave_Real = nVolume_SoundWave;
         if (nVolume_SoundWave_Real == 0)
@@ -1097,7 +1155,7 @@ void Change_Sound(void) // @ add 251212
 
 void SoundWave_Resume(void) // @ add 260320
 {
-    if (nMusicSW && nSoundWaveSW)
+    if ((nMusicSW || nBluePlay) && nSoundWaveSW)
     {
         nVolume_SoundWave_Real = nVolume_SoundWave;
         if (nVolume_SoundWave_Real == 0)

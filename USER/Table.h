@@ -126,20 +126,30 @@ typedef enum
     SUB2TB_BJB,
     SUB2TB_LJA, // 推拿颈部
     SUB2TB_TLA,
-    SUB2TB_TLB, // 提拉颈部
-    SUB2TB_TLC, // 提拉颈部(强力度)
-    SUB2TB_TLD, // 肩部揉按(舒适)
-    SUB2TB_TLE, // 肩部揉按(强力度)
-    SUB2TB_TLF, // 腰部顶揉(舒适)
-    SUB2TB_TLG, // 腰部顶揉(强力度)
-    SUB2TB_TLH, // 背部推揉(舒适)
-    SUB2TB_TLI, // 背部推揉(强力度)
-    SUB2TB_RNZFD, // 不对称揉捏(反到窄+正到宽)
-    SUB2TB_RNZFS, // 不对称揉捏(正到窄+反到更宽)
+    SUB2TB_TLB,   // 提拉颈部
+    SUB2TB_TLC,   // 提拉颈部(强力度)
+    SUB2TB_TLD,   // 肩部揉按(舒适)
+    SUB2TB_TLE,   // 肩部揉按(强力度)
+    SUB2TB_TLF,   // 腰部顶揉(舒适)
+    SUB2TB_TLG,   // 腰部顶揉(强力度)
+    SUB2TB_TLH,   // 背部推揉(舒适)
+    SUB2TB_TLI,   // 背部推揉(强力度)
     SUB2TB_PLSE,  // 脉冲揉捏(快揉+停顿)
     SUB2TB_TKSTG, // 拍揉交替(拍→揉→拍→揉)
     SUB2TB_RMPUP, // 渐快揉捏(慢→中→快)
     SUB2TB_INWAV, // 力度波浪(深→浅→深循环)
+    SUB2TB_TNFN,  // 推拿风池穴
+    SUB2TB_RNFN,  // 揉捏风池穴
+    SUB2TB_ZFRN,
+    SUB2TB_ZFRNA,
+    SUB2TB_ZFRNB,
+    SUB2TB_ZFRNC,
+    SUB2TB_ZFRND,
+    SUB2TB_ZFRNE,
+    SUB2TB_ZFRNF,
+    SUB2TB_ZFRNG,
+    SUB2TB_ZFRNT,
+    SUB2TB_DYD,
 } Sub2Tab_ID;
 
 /*【下机芯程序表】 -------------------------------------------------------------------*/
@@ -149,6 +159,10 @@ typedef enum
     DWTB_0RPZ,
     DWTB_FullA,
     DWTB_FullB,
+#ifdef USE_M2_4D
+    DWTB_FullC,
+    DWTB_FullD,
+#endif
     DWTB_SWPD1,
     DWTB_WastTN,
     DWTB_MassWast,
@@ -186,10 +200,10 @@ typedef enum
     FA_AUTO_AUTO24,
     FA_AUTO_AUTO25,
 
-    A_LC,        
-    A_PACK,      
-    A_Reset,    
-    A_BodyCheck, 
+    A_LC,
+    A_PACK,
+    A_Reset,
+    A_BodyCheck,
 
     Update_Enable = 255,
 } AutoMode_ID;

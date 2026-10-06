@@ -503,6 +503,11 @@ static void system_clock_120m_irc8m(void)
     /* wait until PLL is selected as system clock */
     while(0U == (RCU_CFG0 & RCU_SCSS_PLL)){
     }
+
+    /* configure the FMC wait state counter for 120 MHz */
+    /* @ AI 260927: 120MHz 需要 2 个 Flash 等待周期, 之前从未配置 (FMC_WS 恒为 0),
+       导致 GCC 构建下 OTA 擦除/写入 Flash 时因读时序不稳而 HardFault/无应答 */
+    fmc_wscnt_set(WS_WSCNT_2);
 }
 
 #elif defined (__SYSTEM_CLOCK_HXTAL)

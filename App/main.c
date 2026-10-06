@@ -47,14 +47,14 @@ OF SUCH DAMAGE.
 #include "FUJIApp.h" //@ add for blueota 260303
 
 /* Task timing defines (SysTick period = 1ms) */
-#define TASK_PERIOD_25MS     5    /* 5 × 1ms (Timer_5ms_Cnt) trigger at ~25ms */
-#define TASK_PERIOD_100MS    100  /* 100 × 1ms = 100ms */
-#define TASK_PERIOD_200MS    200  /* 200 × 1ms = 200ms */
-#define TASK_PERIOD_1S       5    /* 5 × 200ms = 1s (count of Timer_200ms_Cnt rollovers) */
+#define TASK_PERIOD_5MS 5     /* 5 × 1ms (Timer_5ms_Cnt) trigger at ~25ms */
+#define TASK_PERIOD_100MS 100 /* 100 × 1ms = 100ms */
+#define TASK_PERIOD_200MS 200 /* 200 × 1ms = 200ms */
+#define TASK_PERIOD_1S 5      /* 5 × 200ms = 1s (count of Timer_200ms_Cnt rollovers) */
 
 /* Aging mode (LC) timing */
-#define LC_CYCLE_MINUTES     76   /* Total cycle: 75 minutes + 1 minute resume buffer */
-#define LC_PAUSE_MINUTES     16   /* Enter pause at 16 minutes remaining */
+#define LC_CYCLE_MINUTES 76      /* Total cycle: 75 minutes + 1 minute resume buffer */
+#define LC_PAUSE_MINUTES 16      /* Enter pause at 16 minutes remaining */
 #define LC_PAUSE_THRESHOLD_SEC 3 /* Resume when seconds drop below this in pause window */
 
 uint8_t PumpState = 0;
@@ -140,13 +140,13 @@ int main(void)
 
         CoreRest(); /* 机芯复位 */
 
-        if (Timer_5ms_Cnt > TASK_PERIOD_25MS)
+        if (Timer_5ms_Cnt > TASK_PERIOD_5MS)
         {
             OS_RTC_TICK++;
             Timer_5ms_Cnt = 0;
             MotorProcess();  //* 靠背、小腿 执行
             RS485_Polling(); //* 485轮询 执行 上下机芯 小腿 扶手按键
-#if (USE_BLUE_APP == 8)
+#if (USE_BLUE_OTA == 1)
             if (OS_RTC_TICK & 0x01)  //* 借用时基
                 FUJIApp_Deal_10ms(); // todo add for blueota 260303
 #endif
@@ -157,6 +157,7 @@ int main(void)
             Timer_100ms_Cnt = 0;
             Health_OutTime_Hand();
             BluePlay_time(); //* 播放时间--
+            // Flash_Check_Deal(); // todo 无效 260821
             KeyPowerScan();
             KeyEncoderHandler(); /* 按键板编码器处理 */
 #ifdef USE_S0555

@@ -265,6 +265,11 @@ extern "C"
 		uint8_t SoundNum;
 		uint8_t SoundSec;
 		uint8_t SoundMin;
+#elif defined USE_HEALTH_AUTO_NUM
+	uint8_t Byte32;
+	uint8_t Byte33;
+	uint8_t Byte34;
+	uint8_t Health_Auto_Num;
 #endif
 	} Display_t;
 

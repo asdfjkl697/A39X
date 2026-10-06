@@ -188,8 +188,6 @@ uint32_t GetTick(void)
         }                                                                  \
     }
 
-volatile u8 Debug_usart0_cnt = 0;
-volatile u16 COM0_overflow_count = 0;
 void USART0_IRQHandler(void)
 {
     UART_ISR_RX(USART0, COM0, RX0_Buffer, COM_RX0_Lenth);

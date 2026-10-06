@@ -73,9 +73,13 @@ void PowerProcess(void)
 			if (TICK_COUNTER(Power.Tick, 15000))
 			{
 				_24V_OFF();
-				_5VC_OFF();				 //* 关闭手控电源
+				_5VC_OFF(); //* 关闭手控电源
+
 				Handle_Dispaly_Step = 0; // todo 增加防止断电5秒内上电手控器bug 260616
-				if (nLowPower == 0)		 // todo add 260701
+#ifdef USE_SOUNDWAVE
+				BREDR_Iint_Flag = 0; // todo 蓝牙开关重新初始化 260825
+#endif
+				if (nLowPower == 0) // todo add 260701
 				{
 					Massage_Flag.Reset = 1;
 					_5VA_OFF(); // * 不能关 机芯计数有问题 等优化 250407

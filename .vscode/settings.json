@@ -75,4 +75,5 @@
         "fmc.h": "c"
     },
     "C_Cpp.dimInactiveRegions": true,
+    "cortex-debug.variableUseNaturalFormat": true,
 }

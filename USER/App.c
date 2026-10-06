@@ -202,21 +202,21 @@ void Send_App_Data(u8 *nBuf, u8 nLen)
     // Arm_App_Update(nBuf, nLen);
 }
 
-u8 Display_Data_F1[20] = {0};
-// u8 Display_Data_F1Con[20]={0};
-u8 Display_Data_F2[20] = {0};
-// u8 Display_Data_F2Con[20]={0};
+void App_Update_Cnt_Set(u8 cnt)
+{
+    App_Update_Cnt = cnt;
+}
 
 void App_Update_State(void)
 {
     // static u8 App_Update_Cnt, App_Update_Cnt1;
     u32 i;
-    u8 Display_Data[20];
     u8 temp = 0, temp1 = 0;
     // APP Update
     switch (App_Update_Cnt)
     {
     case 0:
+        u8 Display_Data_F1[20] = {0};
         Display_Data_F1[0] = 0xAA;
         Display_Data_F1[1] = 0x55;
         Display_Data_F1[2] = 0x02;
@@ -236,7 +236,12 @@ void App_Update_State(void)
         // 按摩时间
         Display_Data_F1[9] = WorkMinGet(); // * 修改 250406 不-1
         Display_Data_F1[10] = WorkSecGet();
-        Display_Data_F1[11] = ((10 - ShoulderValue) << 4) | (BackPosUpGet()); // * 10->11 修改 有问题 250408
+        // u8 m1pos_app = BackPosUpGet() - 1;
+        // if (m1pos_app > 7) // todo md 260924
+        //     m1pos_app = 7;
+        uint16_t M1Circle = GetMoveDataTx(MoveUp)->Tread.CircleH << 8 | GetMoveDataTx(MoveUp)->Tread.CircleL;
+        u8 m1pos_app = M1Circle / 66;
+        Display_Data_F1[11] = ((10 - ShoulderValue) << 4) | m1pos_app; // * 10->11 修改 有问题 250408
         Display_Data_F1[12] = AutoModeGet();
         // if (AutoModeGet() >= 16 && AutoModeGet() <= 19)
         // {
@@ -367,15 +372,14 @@ void App_Update_State(void)
         Display_Data_F1[17] = 0x00;
         Display_Data_F1[18] = 0x0D;
         Display_Data_F1[19] = 0x0A;
-        //  if(TxF1Enable() || TxF2Enable()|| App_Update_Flag){
         for (u8 i = 0; i < 20; i++)
         {
             EUSART2_Write(Display_Data_F1[i]);
         }
-        //  }
         App_Update_Cnt++;
         break;
     case 1:
+        u8 Display_Data_F2[20] = {0};
         Display_Data_F2[0] = 0xAA;
         Display_Data_F2[1] = 0x55;
         Display_Data_F2[2] = 0x02;
@@ -409,38 +413,33 @@ void App_Update_State(void)
             Display_Data_F2[9] = 0;
         }
         i = RollSpeedGet();
-        // nLegKnead表示小腿揉搓档位
-        Display_Data_F2[10] = (i << 4) | 0; // nLegKnead;
+
+        Display_Data_F2[10] = (i << 4) | (KneadModeGet() > 0); // @ md 260927
         i = 0;
-        // 背部加热
-        if (HeatStateGet(BackHeat))
+
+        if (HeatStateGet(BackHeat)) // 背部加热
         {
             i |= 0x80;
         }
         Display_Data_F2[11] = i;
         i = 0;
-        // 小腿加热
-        if (HeatStateGet(LegHeat))
+
+        if (HeatStateGet(LegHeat)) // 小腿加热
         {
             i |= 0x01;
         }
-        // 老化模式
-        if (nLCState)
+        if (nLCState) // 老化模式
         {
             i |= 0x40;
         }
-        // 声控开关
-        if (nVoiceControlSw)
+        if (nVoiceControlSw) // 声控开关
         {
             i |= 0x08;
         }
-        // 蓝牙开关
-        if (nBlueState)
+        if (nBlueState) // 蓝牙开关
         {
             i |= 0x02;
         }
-        // if (nIonState)
-        // i |= 0x04;
         Display_Data_F2[12] = i;
         Display_Data_F2[13] = 0;
         Display_Data_F2[14] = 0;
@@ -454,12 +453,140 @@ void App_Update_State(void)
         {
             EUSART2_Write(Display_Data_F2[i]);
         }
-        App_Update_Flag = 0;
-        //  }
-        App_Update_Cnt = 0;
-        // Send_App_Data(Display_Data, 13);
+        App_Update_Cnt++;
         break;
     case 2:
+        u8 Display_Data_F6[20] = {0};
+        Display_Data_F6[0] = 0xAA;
+        Display_Data_F6[1] = 0x55;
+        Display_Data_F6[2] = 0x02;
+        Display_Data_F6[3] = 0xe5;
+        Display_Data_F6[4] = 0xF6;
+        Display_Data_F6[5] = 0x01;
+        Display_Data_F6[6] = 0x00;
+        Display_Data_F6[7] = 0x09;
+        Display_Data_F6[8] = 0; //*B1
+        uint16_t M2Circle = GetMoveDataTx(MoveDw)->Tread.CircleH << 8 | GetMoveDataTx(MoveDw)->Tread.CircleL;
+        Display_Data_F6[9] = 8 - M2Circle / 72;
+        Display_Data_F6[10] = 0;
+        Display_Data_F6[11] = 0; //*B4
+
+        Display_Data_F6[12] = (AutoModeGet() == 0); //*B5
+
+        // 下机芯按摩手法
+        switch (MassWiseGet(MoveDw)) //*B7
+        {
+        default:
+        case TZ: // 停止
+            Display_Data_F6[14] = 0;
+            break;
+        case RNZ: // 揉捏
+            Display_Data_F6[14] = 1;
+            break;
+        case PD: // 拍打2
+            Display_Data_F6[14] = 2;
+            break;
+        case RPZ: // 揉捏拍打
+            Display_Data_F6[14] = 4;
+            break;
+        case PDB: // 敲击
+            Display_Data_F6[14] = 8;
+            break;
+        }
+
+        temp = MassSpeedGet(MoveDw);
+        if (MassWiseGet(MoveDw) == TZ)
+            temp = 0;
+        temp1 = MassWidthGet(MoveDw) + 1;
+        if (MassWiseGet(MoveDw) == RNZ || MassWiseGet(MoveDw) == RPZ)
+            temp1 = 0;
+        Display_Data_F6[15] = temp << 4 | temp1; //* B8
+        Display_Data_F6[16] = 0;                 //* B9
+        Display_Data_F6[17] = 0x00;
+        Display_Data_F6[18] = 0x0D;
+        Display_Data_F6[19] = 0x0A;
+
+        for (u8 i = 0; i < 20; i++)
+        {
+            EUSART2_Write(Display_Data_F6[i]);
+        }
+        App_Update_Cnt = 0;
+        break;
+
+    case 3: // todo 上传运行时间 260927
+        u8 Display_Data_F9[64] = {0};
+        Display_Data_F9[0] = 0xAA;
+        Display_Data_F9[1] = 0x55;
+        Display_Data_F9[2] = 0x02;
+        Display_Data_F9[3] = 0xe5;
+        Display_Data_F9[4] = 0xF9;
+        Display_Data_F9[5] = 0x01;
+        Display_Data_F9[6] = 0x00;
+        Display_Data_F9[7] = 40;
+#ifdef PART_USE_SUM_TIME
+        u32 time_get_temp = Part_USE_Get(10);
+        Display_Data_F9[8] = time_get_temp & 0xff;
+        Display_Data_F9[9] = (time_get_temp >> 8) & 0xff;
+        Display_Data_F9[10] = (time_get_temp >> 16) & 0xff;
+        Display_Data_F9[11] = (time_get_temp >> 24) & 0xff;
+        time_get_temp = Part_USE_Get(0);
+        Display_Data_F9[12] = time_get_temp & 0xff; // B5
+        Display_Data_F9[13] = (time_get_temp >> 8) & 0xff;
+        Display_Data_F9[14] = (time_get_temp >> 16) & 0xff;
+        Display_Data_F9[15] = 0;
+        Display_Data_F9[16] = 0;
+        Display_Data_F9[17] = 0;
+        time_get_temp = Part_USE_Get(1);
+        Display_Data_F9[18] = time_get_temp & 0xff; // B5
+        Display_Data_F9[19] = (time_get_temp >> 8) & 0xff;
+        Display_Data_F9[20] = (time_get_temp >> 16) & 0xff;
+        time_get_temp = Part_USE_Get(2);
+        Display_Data_F9[21] = time_get_temp & 0xff; // B5
+        Display_Data_F9[22] = (time_get_temp >> 8) & 0xff;
+        Display_Data_F9[23] = (time_get_temp >> 16) & 0xff;
+        time_get_temp = Part_USE_Get(3);
+        Display_Data_F9[24] = time_get_temp & 0xff; // B5
+        Display_Data_F9[25] = (time_get_temp >> 8) & 0xff;
+        Display_Data_F9[26] = (time_get_temp >> 16) & 0xff;
+        time_get_temp = Part_USE_Get(4);
+        Display_Data_F9[27] = time_get_temp & 0xff; // B5
+        Display_Data_F9[28] = (time_get_temp >> 8) & 0xff;
+        Display_Data_F9[29] = (time_get_temp >> 16) & 0xff;
+        time_get_temp = Part_USE_Get(5);
+        Display_Data_F9[30] = time_get_temp & 0xff; // B5
+        Display_Data_F9[31] = (time_get_temp >> 8) & 0xff;
+        Display_Data_F9[32] = (time_get_temp >> 16) & 0xff;
+        time_get_temp = Part_USE_Get(6);
+        Display_Data_F9[33] = time_get_temp & 0xff; // B5
+        Display_Data_F9[34] = (time_get_temp >> 8) & 0xff;
+        Display_Data_F9[35] = (time_get_temp >> 16) & 0xff;
+        time_get_temp = Part_USE_Get(7);
+        Display_Data_F9[36] = time_get_temp & 0xff; // B5
+        Display_Data_F9[37] = (time_get_temp >> 8) & 0xff;
+        Display_Data_F9[38] = (time_get_temp >> 16) & 0xff;
+        time_get_temp = Part_USE_Get(8);
+        Display_Data_F9[39] = time_get_temp & 0xff; // B5
+        Display_Data_F9[40] = (time_get_temp >> 8) & 0xff;
+        Display_Data_F9[41] = (time_get_temp >> 16) & 0xff;
+        time_get_temp = Part_USE_Get(9);
+        Display_Data_F9[42] = time_get_temp & 0xff; // B5
+        Display_Data_F9[43] = (time_get_temp >> 8) & 0xff;
+        Display_Data_F9[44] = (time_get_temp >> 16) & 0xff;
+        Display_Data_F9[45] = 0;
+        Display_Data_F9[46] = 0;
+        Display_Data_F9[47] = 0;
+#endif
+        Display_Data_F9[48] = 0x0D;
+        Display_Data_F9[49] = 0x0A;
+        for (u8 i = 0; i < 50; i++)
+        {
+            EUSART2_Write(Display_Data_F9[i]);
+        }
+        App_Update_Cnt = 0;
+        break;
+
+    case 5:
+        u8 Display_Data[20] = {0};
         Display_Data[0] = 0xAA;
         Display_Data[1] = 0x55;
         Display_Data[2] = 0x02;
@@ -486,6 +613,7 @@ void App_Update_State(void)
         }
         App_Update_Cnt++;
         break;
+
     default:
         App_Update_Cnt = 0;
         break;
@@ -494,6 +622,7 @@ void App_Update_State(void)
 
 void App_Ack(/*u16 TM_ACK_Value*/)
 {
+    u8 len = 0;
     u8 Display_Data[25];
     // todo 注册型号 版本号 260616
     if (TM_ACK_Value & TM_ACK_Model_App)
@@ -506,23 +635,48 @@ void App_Ack(/*u16 TM_ACK_Value*/)
         Display_Data[4] = 0x01;
         Display_Data[5] = 0x01;
         Display_Data[6] = 0x00;
-        Display_Data[7] = 0x08;
+#ifdef A391S_8
+        len = 7;
+        Display_Data[7] = len;
         Display_Data[8] = 0x00;
-        Display_Data[9] = 'A';
-        Display_Data[10] = '3';
-        Display_Data[11] = '9';
-        Display_Data[12] = '1';
-        Display_Data[13] = 'S';
-        Display_Data[14] = '-';
-        Display_Data[15] = '1';
-        Display_Data[16] = 0;
-        Display_Data[17] = 0x0D;
-        Display_Data[18] = 0x0A;
-        for (u8 i = 0; i < 19; i++)
+        Display_Data[9] = 'L';
+        Display_Data[10] = '6';
+        Display_Data[11] = 'S';
+        Display_Data[12] = 'P';
+        Display_Data[13] = 'R';
+        Display_Data[14] = 'O';
+        Display_Data[15] = 0;
+#elif defined A396S_1
+        len = 7;
+        Display_Data[7] = len;
+        Display_Data[8] = 0x00;
+        Display_Data[9] = 'L';
+        Display_Data[10] = '6';
+        Display_Data[11] = 'S';
+        Display_Data[12] = 'M';
+        Display_Data[13] = 'A';
+        Display_Data[14] = 'X';
+        Display_Data[15] = 0;
+#else
+        len = 7;
+        Display_Data[7] = len;
+        Display_Data[8] = 0x00;
+        Display_Data[9] = 'L';
+        Display_Data[10] = '6';
+        Display_Data[11] = 'S';
+        Display_Data[12] = 'P';
+        Display_Data[13] = 'R';
+        Display_Data[14] = 'O';
+        Display_Data[15] = 0;
+#endif
+        Display_Data[len + 9] = 0x0D;
+        Display_Data[len + 10] = 0x0A;
+        for (u8 i = 0; i < (len + 11); i++)
         {
             EUSART2_Write(Display_Data[i]);
         }
         // Send_App_Data(Display_Data, 11);
+        App_Update_Cnt_Set(3); // @ run time 260927
         return;
     }
     if (TM_ACK_Value & TM_ACK_Model_Server)
@@ -535,19 +689,43 @@ void App_Ack(/*u16 TM_ACK_Value*/)
         Display_Data[4] = 0x01;
         Display_Data[5] = 0x01;
         Display_Data[6] = 0x00;
-        Display_Data[7] = 0x08;
+#ifdef A391S_8
+        len = 7;
+        Display_Data[7] = len;
         Display_Data[8] = 0x00;
-        Display_Data[9] = 'A';
-        Display_Data[10] = '3';
-        Display_Data[11] = '9';
-        Display_Data[12] = '1';
-        Display_Data[13] = 'S';
-        Display_Data[14] = '-';
-        Display_Data[15] = '1';
-        Display_Data[16] = 0;
-        Display_Data[17] = 0x0D;
-        Display_Data[18] = 0x0A;
-        for (u8 i = 0; i < 19; i++)
+        Display_Data[9] = 'L';
+        Display_Data[10] = '6';
+        Display_Data[11] = 'S';
+        Display_Data[12] = 'P';
+        Display_Data[13] = 'R';
+        Display_Data[14] = 'O';
+        Display_Data[15] = 0;
+#elif defined A396S_1
+        len = 7;
+        Display_Data[7] = len;
+        Display_Data[8] = 0x00;
+        Display_Data[9] = 'L';
+        Display_Data[10] = '6';
+        Display_Data[11] = 'S';
+        Display_Data[12] = 'M';
+        Display_Data[13] = 'A';
+        Display_Data[14] = 'X';
+        Display_Data[15] = 0;
+#else
+        len = 7;
+        Display_Data[7] = len;
+        Display_Data[8] = 0x00;
+        Display_Data[9] = 'L';
+        Display_Data[10] = '6';
+        Display_Data[11] = 'S';
+        Display_Data[12] = 'P';
+        Display_Data[13] = 'R';
+        Display_Data[14] = 'O';
+        Display_Data[15] = 0;
+#endif
+        Display_Data[len + 9] = 0x0D;
+        Display_Data[len + 10] = 0x0A;
+        for (u8 i = 0; i < (len + 11); i++)
         {
             EUSART2_Write(Display_Data[i]);
         }
@@ -572,19 +750,25 @@ void App_Ack(/*u16 TM_ACK_Value*/)
         Display_Data[11] = UserCode_data >> 8;
         Display_Data[12] = UserCode_data;
         // * 版本号修改 升级判断依据 250415
+#if (FIRMWARE_VERSION == 0)
         Display_Data[13] = 1; // 1.0 固件版本
         Display_Data[14] = 0;
-
         Display_Data[15] = 1; // 1.0 硬件版本
         Display_Data[16] = 0;
+#elif (FIRMWARE_VERSION == 1)
+        Display_Data[13] = 1; // 1.0 固件版本
+        Display_Data[14] = 1;
+        Display_Data[15] = 1; // 1.0 硬件版本
+        Display_Data[16] = 0;
+#endif
         Display_Data[17] = 0; // ERR
         Display_Data[18] = 0;
         Display_Data[19] = 0;
         Display_Data[20] = 0;
-        Display_Data[19] = 0;
-        Display_Data[20] = 0x0D;
-        Display_Data[21] = 0x0A;
-        for (u8 i = 0; i < 22; i++)
+        Display_Data[21] = 0;
+        Display_Data[22] = 0x0D;
+        Display_Data[23] = 0x0A;
+        for (u8 i = 0; i < 24; i++)
         {
             EUSART2_Write(Display_Data[i]);
         }
@@ -706,12 +890,8 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
         switch (nCmd)
         {
         case 0xf1: // 信息查询
-            // App_Update_Cnt = 2, App_Update_Cnt1 = 3;
-            // App_Ack(TM_ACK_Version_Server);
             App_init();
             TM_ACK_Value |= TM_ACK_Version_Server | TM_ACK_Model_Server;
-            // App_Update_Flag=1;
-            // App_Update_Cnt=0;
             break;
         case 0xf4: // 升级
             // Firmware_Update_FC = 255; // * 升级中 250417
@@ -722,8 +902,6 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
                 {
                     UserFunc_Set(UserFunc_PowerOff, 1); // 关机
                 }
-                // if (ota_state != ota_state_start)
-                // {
                 ota_size_num = ((u32)nbuf[8] << 24) +
                                ((u32)nbuf[9] << 16) +
                                ((u32)nbuf[10] << 8) +
@@ -762,7 +940,7 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
                             }
                             ota_over_time = ota_over_time_default;
                             Pt_Reset_ID(TASK_ID_APP);
-                            App_Update_Cnt = 2;
+                            App_Update_Cnt_Set(5); // @ ota md 2-5 260927
                             App_Update_State();
                         }
                         else
@@ -796,44 +974,6 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
                 {
                     ota_state = ota_state_stop;
                 }
-                // if (ota_state != ota_state_Data ||
-                // ota_size != 0 ||
-                // flash_check(TEMPLATE_START_ADDR) == ERROR)
-                // {
-                // App_Ack(TM_ACK_DisValid_Sever);
-                // return;
-                // }
-                // u32 flash_addr = TEMPLATE_START_ADDR;
-                // u32 flash_check = 0;
-                // u8 mode_check = 0;
-                // if (nLen >= 4)
-                // {
-                // while (flash_addr < ota_addr)
-                // {
-                // if (mode_check == 0) // 型号查询
-                // mode_check = ota_found_str(((char *)flash_addr), OTA_MODE);
-                // flash_check += *((u8 *)flash_addr);
-                // flash_addr++;
-                // }
-                // u32 ota_check = ((u32)nbuf[4] << 24) +
-                // ((u32)nbuf[5] << 16) +
-                // ((u32)nbuf[6] << 8) +
-                // ((u32)nbuf[7]);
-                // if (ota_check != flash_check)
-                // {
-                // App_Ack(TM_ACK_DisValid_Sever);
-                // return;
-                // }
-                // }
-                // if (nLen >= 5 && nbuf[12] == 1 && mode_check == 0) // 型号校验
-                // {
-                // App_Ack(TM_ACK_DisValid_Sever);
-                // return;
-                // }
-                // write_upgrade_flag();
-                // App_Ack(TM_ACK_Valid_Sever);
-                // APP_WaitCompleted();
-                // nvic_system_reset();
             }
             break;
         case 0xF5:
@@ -864,8 +1004,6 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
                     TM_ACK_Value = TM_ACK_Valid_Sever;
                     App_Ack();
                     Pt_Reset_ID(TASK_ID_APP);
-                    //  App_Update_Cnt=0;
-                    //  App_Update_State();
                 }
                 else
                 {
@@ -893,8 +1031,6 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
                             App_Ack();
                             AutoLoad_over_time = AutoLoad_over_time_default;
                             Pt_Reset_ID(TASK_ID_APP);
-                            //  App_Update_Cnt=2;
-                            //  App_Update_State();
                         }
                         else
                         {
@@ -961,12 +1097,8 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
         switch (nCmd)
         {
         case 0xe4: // 型号读取
-            // App_Update_Cnt = 2, App_Update_Cnt1 = 0;
             App_init();
             TM_ACK_Value |= TM_ACK_Model_App;
-            // App_Ack(TM_ACK_Model_App);
-            //  App_Update_Flag=1;
-            //  App_Update_Cnt=0;
             break;
         case 0x30: // 开关机
             Key.Value = Key_Power;
@@ -993,12 +1125,7 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
                 Key.Value = Key_BodyCheck_Jump;
             }
             break;
-        // case 0x33:
-        // case 0x38: // 选择强度
-        // Key.Value = Key_MasMode;
-        // App_Update_Cnt = 0;
-        // App_Update_Cnt1 = 0;
-        // break;
+
         case 0x34: // 暂停
             Key.Value = Key_Pause;
             break;
@@ -1123,14 +1250,156 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
                 Key.Value = Key_AutoMode;
             }
             break;
+#ifdef USE_M2      // todo add 260924
+        case 0xc0: // @ 定点
+            if ((WorkStateGet() == WorkState_Work) || (WorkStateGet() == WorkState_WaitFunc) || (AutoModeGet() != 0))
+            {
+                MoveWhichSet(MoveDw);
+                if (AutoModeGet() > 0) // * 增加 250419
+                {
+                    MassWiseSet(MoveUp, TZ);
+                    MassWiseSet(MoveDw, TZ);
+                    UserFunc_Set(UserFunc_ManualMode, 0);
+                }
+                MassAreaSet(MoveDw, Area_Fixed);
+                Buzzer = SOUND_ACK;
+            }
+            break;
+        case 0xc1: // @ 手法
+            if ((WorkStateGet() == WorkState_Work) || (WorkStateGet() == WorkState_WaitFunc))
+            {
+                MoveWhichSet(MoveDw);
+                if (AutoModeGet() > 0 || (WorkStateGet() == WorkState_WaitFunc)) // * 修改 250409
+                {
+                    MassWiseSet(MoveUp, TZ);
+                    MassWiseSet(MoveDw, TZ);
+                    UserFunc_Set(UserFunc_ManualMode, 0);
+                    i = 0;
+                }
+                else
+                {
+                    i = MassWiseGet(MoveDw);
+                }
+                if (/*Manual_Select==0 &&*/ Key.Param == 6 /*i <= JRZFB && i >= JRZ*/)
+                {
+                    // MoveUpTreadStateSet(TreadState_Stop, 0, 0);
+                    Part_Date_Set(MoveUp_Flex, 1, FLEX_FIX_CIRCLE, 0, 0, 2);
+                    KeyPush.TreadKeyState = TreadState_Stop;
+                }
+                switch (Key.Param)
+                {
+                default: // 停止
+                case 0:
+                    i = TZ;
+                    break;
+                case 1: // 揉捏
+                    i = RNZ;
+                    break;
+                case 2: // 拍打2
+                    i = PD;
+                    break;
+                case 4: // 揉捏拍打
+                    i = RPZ;
+                    break;
+                case 8: // 敲击
+                    i = PDB;
+                    break;
+                }
+
+                if (0 == MassSpeedGet(MoveDw))
+                {
+                    MassSpeedSet(MoveDw, 3);
+                }
+                MassWiseSet(MoveDw, (ManualWise_E)i);
+
+                KeyPush.WiseKeyState = 1;
+                Buzzer = SOUND_ACK;
+            }
+            break;
+        case 0xc2: // @ 速度
+            if (WorkStateGet() == WorkState_Work && AutoModeGet() == 0)
+            {
+                MoveWhichSet(MoveDw);
+                if (MassWiseGet(MoveDw) == TZ)
+                {
+                    Buzzer = SOUND_ALARM;
+                    return;
+                }
+                i = MassSpeedGet(MoveDw);
+                if (Key.Param == 0x01) // 循环模式
+                {
+                    if (i < 5)
+                    {
+                        MassSpeedSet(MoveDw, i + 1);
+                    }
+                    else
+                    {
+                        MassSpeedSet(MoveDw, 1);
+                    }
+                    Buzzer = SOUND_ACK; //* 已增加
+                }
+            }
+            break;
+        case 0xc4: // @ 移动
+            if (MassAreaGet(MoveUp) == Area_Full)
+            {
+                Buzzer = SOUND_ALARM;
+                break;
+            }
+            MoveWhichSet(MoveDw);
+            Key.Value = Key_BackTread;
+            if (nParam == 1) // 上
+            {
+                Key.Param = 1;
+            }
+            if (nParam == 2) // 下
+            {
+                Key.Param = 2;
+            }
+            break;
+        case 0xc5: // 宽度
+            if (((WorkStateGet() == WorkState_Work) || (WorkStateGet() == WorkState_WaitFunc)) && AutoModeGet() == 0)
+            {
+                MoveWhichSet(MoveDw);
+                if ((RNZ == MassWiseGet(MoveDw)) ||
+                    (RPZ == MassWiseGet(MoveDw)) ||
+                    (JRZ == MassWiseGet(MoveDw)))
+                {
+                    Buzzer = SOUND_ALARM;
+                    break;
+                }
+                i = MassWidthGet(MoveDw);
+                if (Key.Param == 0x10) //-
+                {
+                    if (i > 0)
+                    {
+                        MassWidthSet(MoveDw, i - 1);
+                        Buzzer = SOUND_ACK;
+                    }
+                    else
+                    {
+                        Buzzer = SOUND_ALARM;
+                    }
+                }
+                else if (Key.Param == 0x20) //+
+                {
+                    if (i < 4)
+                    {
+                        MassWidthSet(MoveDw, i + 1);
+                        Buzzer = SOUND_ACK;
+                    }
+                    else
+                    {
+                        Buzzer = SOUND_ALARM;
+                    }
+                }
+            }
+            break;
+#endif
         case 0x41: // 按摩区域
             if ((WorkStateGet() == WorkState_Work) || (WorkStateGet() == WorkState_WaitFunc) || (AutoModeGet() != 0))
             {
-                // if (MoveWhichGet())
-                // {
-                // Buzzer = SOUND_ALARM;
-                // return;
-                // }
+                MoveWhichSet(MoveUp);
                 if (AutoModeGet() > 0) // * 增加 250419
                 {
                     MassWiseSet(MoveUp, TZ);
@@ -1172,6 +1441,7 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
         case 0x42: // 按摩手法？
             if ((WorkStateGet() == WorkState_Work) || (WorkStateGet() == WorkState_WaitFunc))
             {
+                MoveWhichSet(MoveUp);
                 if (AutoModeGet() > 0 || (WorkStateGet() == WorkState_WaitFunc)) // * 修改 250409
                 {
                     MassWiseSet(MoveUp, TZ);
@@ -1183,16 +1453,7 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
                 }
                 else
                 {
-#ifdef USE_M2
-                    if (MoveWhichGet())
-                    {
-                        i = MassWiseGet(MoveDw);
-                    }
-                    else
-#endif
-                    {
-                        i = MassWiseGet(MoveUp);
-                    }
+                    i = MassWiseGet(MoveUp);
                 }
                 if (/*Manual_Select==0 &&*/ Key.Param == 6 /*i <= JRZFB && i >= JRZ*/)
                 {
@@ -1204,7 +1465,6 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
                 {
                 default: // 停止
                     i = TZ;
-
                     break;
                 case 0: // 手法1 停止
                     i = TZ;
@@ -1240,23 +1500,14 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
                     // i = TJA;
                     break;
                 }
-                //                    if(MoveWhichGet())
-                //                    {
-                //                        if(0 == MassSpeedGet(MoveDw))
-                //                        {
-                //                            MassSpeedSet(MoveDw, 3);
-                //                        }
-                //                        MassWiseSet(MoveDw, (ManualWise_E)i);
-                //                    }
-                //                    else
+
+                if (0 == MassSpeedGet(MoveUp))
                 {
-                    if (0 == MassSpeedGet(MoveUp))
-                    {
-                        MassSpeedSet(MoveUp, 3);
-                    }
-                    MassWiseSet(MoveUp, (ManualWise_E)i);
-                    MassIntensitySet(nBackIntensity << 1); // * 增加让 ZYD ZYS 工作 250419
+                    MassSpeedSet(MoveUp, 3);
                 }
+                MassWiseSet(MoveUp, (ManualWise_E)i);
+                MassIntensitySet(nBackIntensity << 1); // * 增加让 ZYD ZYS 工作 250419
+
                 KeyPush.WiseKeyState = 1;
                 Buzzer = SOUND_ACK;
             }
@@ -1264,49 +1515,14 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
         case 0x43: // 按摩速度？
             if (WorkStateGet() == WorkState_Work && AutoModeGet() == 0)
             {
-#ifdef USE_M2
-                if (MoveWhichGet())
-                {
-                    if (MassWiseGet(MoveDw) == TZ)
-                    {
-                        Buzzer = SOUND_ALARM;
-                        return;
-                    }
-                    i = MassSpeedGet(MoveDw);
-                    if (Key.Param == 0x02)
-                    {
-                        if (i > 1)
-                        {
-                            MassSpeedSet(MoveDw, i - 1);
-                            Buzzer = SOUND_ACK; //* 已增加
-                        }
-                        else
-                        {
-                            Buzzer = SOUND_ALARM;
-                        }
-                    }
-                    if (Key.Param == 0x01)
-                    {
-                        if (i < 5)
-                        {
-                            MassSpeedSet(MoveDw, i + 1);
-                            Buzzer = SOUND_ACK;
-                        }
-                        else
-                        {
-                            Buzzer = SOUND_ALARM;
-                        }
-                    }
-                    return;
-                }
-#endif
+                MoveWhichSet(MoveUp);
                 if (MassWiseGet(MoveUp) == ZYS || MassWiseGet(MoveUp) == TZ || MassWiseGet(MoveUp) == ZY)
                 {
                     Buzzer = SOUND_ALARM;
                     return;
                 }
                 i = MassSpeedGet(MoveUp);
-                 if (Key.Param == 0x01) // 循环模式
+                if (Key.Param == 0x01) // 循环模式
                 {
                     if (i < 5)
                     {
@@ -1345,44 +1561,8 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
         case 0x44: // 按摩宽度？
             if (((WorkStateGet() == WorkState_Work) || (WorkStateGet() == WorkState_WaitFunc)) && AutoModeGet() == 0)
             {
-#ifdef USE_M2
-                if (MoveWhichGet())
-                {
-                    if ((RNZ == MassWiseGet(MoveDw)) ||
-                        (RPZ == MassWiseGet(MoveDw)) ||
-                        (JRZ == MassWiseGet(MoveDw)))
-                    {
-                        Buzzer = SOUND_ALARM;
-                        break;
-                    }
-                    i = MassWidthGet(MoveDw);
-                    if (Key.Param == 0x02) //-
-                    {
-                        if (i > 1)
-                        {
-                            MassWidthSet(MoveDw, i - 1);
-                            Buzzer = SOUND_ACK;
-                        }
-                        else
-                        {
-                            Buzzer = SOUND_ALARM;
-                        }
-                    }
-                    else if (Key.Param == 0x01) //+
-                    {
-                        if (i < 5)
-                        {
-                            MassWidthSet(MoveDw, i + 1);
-                            Buzzer = SOUND_ACK;
-                        }
-                        else
-                        {
-                            Buzzer = SOUND_ALARM;
-                        }
-                    }
-                    return;
-                }
-#endif
+                MoveWhichSet(MoveUp);
+
                 if ((RNZ == MassWiseGet(MoveUp)) ||
                     (RPZ == MassWiseGet(MoveUp)) ||
                     (JRZ == MassWiseGet(MoveUp)))
@@ -1420,85 +1600,56 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
         case 0x45: //@ 背部强度
             if ((WorkStateGet() == WorkState_Work) || (WorkStateGet() == WorkState_WaitFunc))
             {
-                if (MoveWhichGet())
+                MoveWhichSet(MoveUp);
+
+                if (Key.Param == 0x20)
                 {
-                    Buzzer = SOUND_ALARM; /* 下机芯一般不调4D强度 */
-                }
-                else
-                {
-                    if (Key.Param == 0x20)
+                    if (nBackIntensity < 4)
                     {
-                        if (nBackIntensity < 4)
-                        {
-                            nBackIntensity++;
-                            Buzzer = SOUND_ACK;
-                        }
-                        else
-                        {
-                            Buzzer = SOUND_ALARM;
-                        }
-                    }
-                    else if (Key.Param == 0x10)
-                    {
-                        if (nBackIntensity > 0)
-                        {
-                            nBackIntensity--;
-                            Buzzer = SOUND_ACK;
-                        }
-                        else
-                        {
-                            Buzzer = SOUND_ALARM;
-                        }
+                        nBackIntensity++;
+                        Buzzer = SOUND_ACK;
                     }
                     else
                     {
-                        if (nBackIntensity > 3) // * 修改 5->3 250406
-                        {
-                            nBackIntensity = 0;
-                        }
-                        else
-                        {
-                            nBackIntensity++;
-                        }
+                        Buzzer = SOUND_ALARM;
+                    }
+                }
+                else if (Key.Param == 0x10)
+                {
+                    if (nBackIntensity > 0)
+                    {
+                        nBackIntensity--;
                         Buzzer = SOUND_ACK;
                     }
+                    else
+                    {
+                        Buzzer = SOUND_ALARM;
+                    }
+                }
+                else
+                {
+                    if (nBackIntensity > 3) // * 修改 5->3 250406
+                    {
+                        nBackIntensity = 0;
+                    }
+                    else
+                    {
+                        nBackIntensity++;
+                    }
+                    Buzzer = SOUND_ACK;
                 }
 
                 if (AutoModeGet() == 0) // @ 手动模式直接设置3D强度、自动模式还要参考结合动作表
                 {
                     MassIntensitySet(nBackIntensity << 1);
                 }
-                break;
             }
             break;
         case 0x46: // 气压强度，只有一个强度参数
-            // Key.Value = Key_UpperAir;
-            // Key.Param = 1;
-            //            // Key.Param = nCurAirState;
-            // if (WorkStateGet == WorkState_Work)
-            // {
-            // if (Air_Stre_State > 0)
-            // {
-            // Buzzer = SOUND_ALARM;
-            // break;
-            // }
-            // if (nCurAirState == Air_State_All)
-            // Air_Set_Mode(Air_State_Stop);
-            // else
-            // Air_Set_Mode(Air_State_All);
-            // Buzzer = SOUND_ACK;
-            // }
-            //                Key.Param = AirIntensityGet();
+
             Key.Value = Key_UpperAirStrength;
             Key.Param = 3; // Key_UpperAirStrength解析处理，参数为3的时候气压强度循环累加
-            //                if(Key.Param < 5)
-            //                {
-            //                    Key.Param++;
-            //                }
-            //                else
-            //                {
-            //                    Key.Param = 1;
-            //                }
+
             break;
         case 0x47: // 当作上半身模式
             if (Key.Param == 0x20)
@@ -1539,10 +1690,6 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
             }
             break;
         case 0x48: // 当作下半身模式
-            //                if(Key.Param == 0x30)
-            //                {
-            //                    Key.Value = Key_LowerAir;
-            //                }
             if (Key.Param == 0x30)
             {
                 Buzzer = SOUND_ACK; // * 增加 250419
@@ -1653,11 +1800,11 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
         case 0x51:
         case 0x54:
             Key.Value = Key_LegsFlex;
-            if (nParam == 0) // 上升
+            if (nParam == 1) // 上升
             {
                 Key.Param = 2;
             }
-            if (nParam == 1) // 下降
+            if (nParam == 0) // 下降
             {
                 Key.Param = 1;
             }
@@ -1699,6 +1846,12 @@ void App_Cmd_Handler(u8 *nbuf, u16 nLen)
             Key.Value = Key_Zero;
             break;
         case 0x57:
+            if (MassAreaGet(MoveUp) == Area_Full || MassAreaGet(MoveUp) == Area_Upper || MassAreaGet(MoveUp) == Area_Lower)
+            {
+                Buzzer = SOUND_ALARM;
+                break;
+            }
+            MoveWhichSet(MoveUp);
             Key.Value = Key_BackTread;
             if (nParam == 0) // 上
             {
@@ -1828,8 +1981,6 @@ void AppCom(u8 dat)
         if (TICK_COUNTER(Write_Upgrade_Tick, 1000))
         {
             Write_Upgrade_Flag = 0;
-            // App_Update_Cnt = 0; // * 直接跳转界面 无效 250417
-            // App_Update_State();
             write_upgrade_flag(); // * 写更新标志 延时开启 转移 250418
         }
     }

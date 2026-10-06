@@ -28,7 +28,18 @@
 // #define MOVEDWWIDTH3 47
 // #define MOVEDWWIDTH4 51
 // #define MOVEDWWIDTH5 57
-
+#ifdef USE_M2_4D
+#define MOVEDWWIDTH1 40 // 6
+#define MOVEDWWIDTH2 49 // 7
+#define MOVEDWWIDTH3 55 // 8
+#define MOVEDWWIDTH4 61 // 9
+#define MOVEDWWIDTH5 3	// A = 0
+#define MOVEDWWIDTH6 12 // 1
+#define MOVEDWWIDTH7 18 // 2
+#define MOVEDWWIDTH8 23 // 3
+#define MOVEDWWIDTH9 29 // 4
+#define MOVEDWWIDTHA 34 // 5
+#else
 #define MOVEDWWIDTH1 34
 #define MOVEDWWIDTH2 43
 #define MOVEDWWIDTH3 50
@@ -39,7 +50,7 @@
 #define MOVEDWWIDTH8 18
 #define MOVEDWWIDTH9 24
 #define MOVEDWWIDTHA 30
-
+#endif
 typedef enum
 {
 	TREAD_STOP,						// 行走停止, para1,para2, speed无效

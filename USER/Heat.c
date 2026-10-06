@@ -209,11 +209,20 @@ void HeatProcess(void)
 
 #if (HEAT_BACK)
 	Sw = AT_Func_OnOffHandle(100, Heat[BackHeat].State, Heat[BackHeat].Level, &Heat[BackHeat].TargetOnOffTime, HeatBackOnOffTimeTab);
-	if (FUNC_ON == Sw)
+	// if (FUNC_ON == Sw)
+	// {
+	// 	BackHeatOn();
+	// }
+	// else if (FUNC_OFF == Sw)
+	// {
+	// 	BackHeatOff();
+	// }
+
+	if (FUNC_ON == Sw && WorkStateGet() == WorkState_Work) // todo add 暂停不加热 260826
 	{
 		BackHeatOn();
 	}
-	else if (FUNC_OFF == Sw)
+	else
 	{
 		BackHeatOff();
 	}
@@ -227,11 +236,19 @@ void HeatProcess(void)
 
 #if (HEAT_LEG)
 	Sw = AT_Func_OnOffHandle(100, Heat[LegHeat].State, Heat[LegHeat].Level, &Heat[LegHeat].TargetOnOffTime, HeatLegOnOffTimeTab);
-	if (FUNC_ON == Sw)
+	// if (FUNC_ON == Sw)
+	// {
+	// 	LegHeatOn();
+	// }
+	// else if (FUNC_OFF == Sw)
+	// {
+	// 	LegHeatOff();
+	// }
+	if (FUNC_ON == Sw && WorkStateGet() == WorkState_Work) // todo add 暂停不加热 260826
 	{
 		LegHeatOn();
 	}
-	else if (FUNC_OFF == Sw)
+	else
 	{
 		LegHeatOff();
 	}

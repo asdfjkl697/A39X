@@ -1,0 +1,33 @@
+{
+    // 一键编译: Ctrl+Shift+B 运行默认任务 "一键编译"
+    // 前提: cmake、mingw32-make 与 arm-none-eabi-gcc 已加入 PATH
+    // 若工具链不在 PATH, 修改下方 cmake-configure 的 -DTOOLCHAIN_PREFIX=... 为绝对路径
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "cmake-configure",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-S", ".",
+                "-B", "build",
+                "-G", "MinGW Makefiles",
+                "-DCMAKE_BUILD_TYPE=Debug",
+                "-DTOOLCHAIN_PREFIX=arm-none-eabi-"
+            ],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
+        },
+        {
+            "label": "一键编译",
+            "type": "shell",
+            "command": "cmake",
+            "args": [ "--build", "build", "-j" ],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": "$gcc",
+            "group": { "kind": "build", "isDefault": true },
+            "dependsOn": [ "cmake-configure" ],
+            "dependsOrder": "sequence"
+        }
+    ]
+}

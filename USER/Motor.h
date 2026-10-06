@@ -43,13 +43,13 @@ extern "C"
 #define DDG_BCircle_Zero0 0
 #define DDG_BCircle_Zero1 50
 #define DDG_BCircle_Zero2 70 // @ 扶手水平 90-85
-#define DDG_BCircle_Zero3 90
+#define DDG_BCircle_Zero3 99 // todo 修改 90-99 260928
 #define DDG_BCircle_DB 98
 
 #define DDG_LCircle_Zero0 0
 #define DDG_LCircle_Zero1 85
 #define DDG_LCircle_Zero2 93 //* 250915 90->93
-#define DDG_LCircle_Zero3 98 //* 250915 95->98
+#define DDG_LCircle_Zero3 99 //* 250915 95->98->99 260928
 #define DDG_LCircle_DB 0
 
 // 全身拉伸位置

@@ -240,6 +240,7 @@ uint8_t TxPolling = 0;
 uint8_t TxPollingPre;
 uint8_t TxKeepCnt = 0;
 
+#define RS485_Idle_MAX 17 // todo md 20-17 260918
 bool RS485_Idle_Flag = 0;
 u8 RS485_Delay = 0;
 u8 RS485_Idle_Cnt = 0;
@@ -247,12 +248,12 @@ u16 Debug_TxKeepCnt = 0; // @ 测试重发次数 251007
 u16 Debug_TxKeepCntA = 0;
 void RS485_Poll_Reset(void) // * add 251104
 {
-	RS485_Idle_Cnt = 20;
+	RS485_Idle_Cnt = RS485_Idle_MAX;
 	TxPolling = 0;
 }
 void RS485_Polling(void)
 {
-	if (++RS485_Idle_Cnt > 20)
+	if (++RS485_Idle_Cnt > RS485_Idle_MAX)
 	{
 		RS485_Idle_Cnt = 0;
 		RS485_Idle_Flag = 0;
@@ -289,6 +290,7 @@ void RS485_Polling(void)
 	if (TxKeepCnt > 2) // * 重发3次
 	{
 		TxPolling++;
+		TxPollingPre = TxPolling; // @ AI 判断 260917 与丢包超时分支保持一致, 避免切通道后背靠背连续发送
 		TxKeepCnt = 0;
 		Debug_TxKeepCntA++; //* 测试用
 	}

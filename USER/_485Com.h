@@ -11,7 +11,7 @@
 #define LegAddr 0x05
 #define HandlerAddr 0x07
 
-#define Max_RxBuffer_Len 50
+#define Max_RxBuffer_Len 256 // @ AI 260928: 50→256, OTA数据包200字节+帧头/校验/帧尾≈211字节, 原50字节溢出冲掉 ota_state 导致0xf4数据帧被丢弃
 
 typedef struct
 {

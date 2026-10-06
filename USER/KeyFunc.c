@@ -591,6 +591,7 @@ void KeyFunc(void)
             }
             nVolume_SoundWave_Real = nVolume_SoundWave;
             Flash_Parameter_Write();
+            // Flash_Check_Tick = Flash_Check_Time; // todo 测试调节音量速度 260821
             break;
 
         case Key_SoundWave:
@@ -606,20 +607,15 @@ void KeyFunc(void)
             {
                 nSoundWaveSW = 0;
             }
-            else if (nMusicSW) // todo md 260707
+            else // todo md 260707
             {
                 nSoundWaveSW = 1;
-                if (AutoModeGet() == 0 || AutoModeGet() > 5)
-                {
-                    nManualPlay = 1;
-                    Flash_Parameter_read(); // todo 读取存储值 主要为了音波 260707
-                }
             }
-            else
-                Buzzer = SOUND_ALARM;
+
             Change_Sound();
+            // if (AutoModeGet() > 0) // todo md 260821
             Flash_Parameter_Write();
-            if (nSoundWaveSW) // @ 打开需要处理，关闭不需要 260424
+            if (nSoundWaveSW && BlueState_Play == 0) // @ 打开需要处理，关闭不需要 260424 音乐已经打开不切换 260822
                 BlueState_Play_Deal();
             break;
 
@@ -629,20 +625,15 @@ void KeyFunc(void)
             {
                 nSoundMusicSW = 0;
             }
-            else if (nMusicSW) // todo md 260707
+            else
             {
                 nSoundMusicSW = 1;
-                if (AutoModeGet() == 0 || AutoModeGet() > 5)
-                {
-                    nManualPlay = 1;
-                    Flash_Parameter_read(); // todo 读取存储值 主要为了音波 260707
-                }
             }
-            else
-                Buzzer = SOUND_ALARM;
+
             Change_Sound();
+            // if (AutoModeGet() > 0) // todo md 260821
             Flash_Parameter_Write();
-            if (nSoundMusicSW) // @ 打开需要处理，关闭不需要 260424
+            if (nSoundMusicSW && BlueState_Play == 0) // @ 打开需要处理，关闭不需要 260424 音乐已经打开不切换 260822
                 BlueState_Play_Deal();
             break;
 
@@ -670,24 +661,6 @@ void KeyFunc(void)
             }
             else if (Key.Param == 0x02)
             {
-                // switch (Blue_Play_ID1)
-                // {
-                // case 45:
-                //     Blue_Play_ID1 = 46;
-                //     Blue_Play_ID2 = 46;
-                //     break;
-                // case 46:
-                //     Blue_Play_ID1 = 47;
-                //     Blue_Play_ID2 = 47;
-                //     break;
-                // case 47:
-                //     Blue_Play_ID1 = 45;
-                //     Blue_Play_ID2 = 45;
-                //     break;
-                // default:
-                //     break;
-                // }
-
                 if (Blue_Play_ID1 >= VC_YBMusic4)
                 {
                     Blue_Play_ID1 = VC_Music1;
@@ -781,6 +754,7 @@ void KeyFunc(void)
             nVolume_Real = nVolume;
 #endif
             Flash_Parameter_Write();
+            // Flash_Check_Tick = Flash_Check_Time;
             break;
 
         case Key_Volume_Set:
@@ -931,8 +905,35 @@ void KeyFunc(void)
 
                 if (MoveWhichGet())
                 {
+#ifndef USE_M2_4D
                     MoveWhichSet(MoveUp); // * 增加 250521
                     Buzzer = SOUND_ALARM; /* 下机芯一般不调4D强度 */
+#else
+                    if (Key.Param == 0x02) //-
+                    {
+                        if (nBackIntensity_M2 > 0)
+                        {
+                            nBackIntensity_M2--;
+                            Buzzer = SOUND_ACK;
+                        }
+                        else
+                            Buzzer = SOUND_ALARM;
+                    }
+                    else if (Key.Param == 0x01) //+
+                    {
+                        if (nBackIntensity_M2 < 4)
+                        {
+                            nBackIntensity_M2++;
+                            Buzzer = SOUND_ACK;
+                        }
+                        else
+                            Buzzer = SOUND_ALARM;
+                    }
+                    if (AutoModeGet() == 0)                     // * 手动模式直接设置3D强度、自动模式还要参考结合动作表
+                        MassIntensitySet_M2(nBackIntensity_M2); //* 测试 250807
+                    Move_Flag[MoveDw].Inten = 1;                // * add 250901
+#endif
+                    break;
                 }
                 else
                 {
@@ -1355,16 +1356,16 @@ void KeyFunc(void)
                 case 2: // 揉捏
                     i = RNZ;
                     break;
-#ifdef USE_S0555
-                case 3: // 拍打1
+                case 3: // 拍打
                     i = PD;
                     break;
-                case 4: // * 拍打2
-                    i = PDB;
-                    break;
-                case 5: //* 揉捏拍打
+                case 4: // 揉捏拍打
                     i = RPZ;
                     break;
+                case 5: // 敲击
+                    i = PDB;
+                    break;
+#ifdef USE_S0555
                 case 6: // 指压
                     i = ZYS;
                     break;
@@ -1387,16 +1388,6 @@ void KeyFunc(void)
                     i = ZYD;
                     break;
 #else
-                case 3: // 拍打2
-                    i = PD;
-                    break;
-
-                case 4: // 揉捏拍打
-                    i = RPZ;
-                    break;
-                case 5: // 敲击
-                    i = PDB;
-                    break;
                 case 6: // 指压
                     i = ZYS;
                     break;
