@@ -3,7 +3,7 @@
  * Auto generated Run-Time-Environment Configuration File
  *      *** Do not modify ! ***
  *
- * Project: 'A391S-5' 
+ * Project: 'A39X' 
  * Target:  'Target 1' 
  */
 

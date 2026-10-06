@@ -41,6 +41,9 @@ OF SUCH DAMAGE.
 
 #include <stdint.h>
 
+void fwdgt_init(void);
+void feed_watchdog(void);
+
 /* configure systick */
 void systick_config(void);
 /* delay a time in milliseconds */

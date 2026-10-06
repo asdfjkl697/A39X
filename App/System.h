@@ -103,7 +103,7 @@ typedef struct
 	//	MChairKeyHandle_t                      KeyHandle;
 	//
 	//	MChairWorkState_t                      WorkState;
-#if (USE_M2)
+#ifdef USE_M2
 	MChairCoreState_t CoreState[2];
 #else
 	MChairCoreState_t CoreState[1];

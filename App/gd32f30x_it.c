@@ -41,8 +41,8 @@ OF SUCH DAMAGE.
 #include "config.h"
 #include "Motor.h"
 
-uint32_t Timer_1ms = 0, Timer_5ms_Cnt = 0, Timer_50ms_Cnt = 0, Timer_100ms_Cnt = 0, Timer_150ms_Cnt = 0, Timer_200ms_Cnt = 0, Timer_1s_Cnt;
-u8 ADC0_Finish = 0;
+volatile uint32_t Timer_1ms = 0, Timer_5ms_Cnt = 0, Timer_50ms_Cnt = 0, Timer_100ms_Cnt = 0, Timer_150ms_Cnt = 0, Timer_200ms_Cnt = 0, Timer_1s_Cnt;
+volatile u8 ADC0_Finish = 0;
 
 /*!
     \brief      this function handles NMI exception
@@ -161,230 +161,89 @@ uint32_t GetTick(void)
 
     return Timer_1ms;
 }
-u8 Debug_usart0_cnt = 0;
-u16 COM0_overflow_count = 0;
+
+/* UART ISR helper macros — common RX (RBNE) and TX (TBE) patterns */
+#define UART_ISR_RX(USARTx, COMx, RX_BUF, RX_LEN)                      \
+    if (RESET != usart_interrupt_flag_get(USARTx, USART_INT_FLAG_RBNE)) \
+    {                                                                    \
+        usart_interrupt_flag_clear(USARTx, USART_INT_FLAG_RBNE);        \
+        RX_BUF[COMx.RX_write] = usart_data_receive(USARTx);             \
+        if (++COMx.RX_write >= RX_LEN)                                   \
+            COMx.RX_write = 0;                                           \
+    }
+
+#define UART_ISR_TXE(USARTx, COMx, TX_BUF, TX_LEN)                     \
+    if (RESET != usart_interrupt_flag_get(USARTx, USART_INT_FLAG_TBE)) \
+    {                                                                    \
+        usart_interrupt_flag_clear(USARTx, USART_INT_FLAG_TBE);         \
+        if (COMx.TX_read != COMx.TX_write)                               \
+        {                                                                 \
+            usart_data_transmit(USARTx, TX_BUF[COMx.TX_read]);           \
+            if (++COMx.TX_read >= TX_LEN)                                 \
+                COMx.TX_read = 0;                                         \
+        }                                                                 \
+        else                                                               \
+        {                                                                  \
+            usart_interrupt_disable(USARTx, USART_INT_TBE);                \
+        }                                                                  \
+    }
+
+volatile u8 Debug_usart0_cnt = 0;
+volatile u16 COM0_overflow_count = 0;
 void USART0_IRQHandler(void)
 {
-
-    if (RESET != usart_interrupt_flag_get(USART0, USART_INT_FLAG_RBNE))
-    {
-
-//        usart_interrupt_flag_clear(USART0, USART_INT_FLAG_RBNE);
-        RX0_Buffer[COM0.RX_write] = usart_data_receive(USART0);
-        if (++COM0.RX_write >= COM_RX0_Lenth)
-            COM0.RX_write = 0;
-    }
-
-    // if (RESET != usart_interrupt_flag_get(USART0, USART_INT_FLAG_RBNE)) //todo deepseek 无效
-    // {
-    //     const uint8_t next_write = (COM0.RX_write + 1) % COM_RX0_Lenth;
-    //     if (next_write != COM0.RX_read)
-    //     { // 缓冲区未满时写入
-    //         // usart_interrupt_flag_clear(USART0, USART_INT_FLAG_RBNE);
-    //         RX0_Buffer[COM0.RX_write] = usart_data_receive(USART0);
-    //         COM0.RX_write = next_write;
-    //     }
-    //     else
-    //     {
-    //         // 可选：记录溢出错误或丢弃数据
-    //         COM0_overflow_count++;
-    //     }
-    // }
-
-    // if (usart_interrupt_flag_get(USART0, USART_INT_FLAG_ERR_ORERR)
-    //     || usart_interrupt_flag_get(USART0, USART_INT_FLAG_ERR_NERR)
-    //     || usart_interrupt_flag_get(USART0, USART_INT_FLAG_ERR_FERR))
-    // {
-    //     Debug_usart0_cnt++;
-    // }
-
-    // usart_interrupt_flag_clear(USART0, USART_INT_FLAG_ERR_ORERR); // todo 调试 250315
-
-    if (RESET != usart_interrupt_flag_get(USART0, USART_INT_FLAG_TBE))
-    {
-
-        usart_interrupt_flag_clear(USART0, USART_INT_FLAG_TBE);
-
-        if (COM0.TX_read != COM0.TX_write)
-        {
-            usart_data_transmit(USART0, TX0_Buffer[COM0.TX_read]);
-            if (++COM0.TX_read >= COM_TX0_Lenth)
-                COM0.TX_read = 0;
-        }
-        else
-        {
-            if (COM0.B_TX_busy == 0) // todo 屏蔽 250220
-            {
-                // usart_data_transmit(USART0, TX0_Buffer[COM0.TX_read]);
-                COM0.B_TX_busy = 1;
-            }
-            else
-            {
-                COM0.B_TX_busy = 0;
-                usart_interrupt_disable(USART0, USART_INT_TBE);
-            }
-        }
-    }
+    UART_ISR_RX(USART0, COM0, RX0_Buffer, COM_RX0_Lenth);
+    UART_ISR_TXE(USART0, COM0, TX0_Buffer, COM_TX0_Lenth);
 }
 
 void USART1_IRQHandler(void)
 {
-
-    if (RESET != usart_interrupt_flag_get(USART1, USART_INT_FLAG_RBNE))
-    {
-
-        usart_interrupt_flag_clear(USART1, USART_INT_FLAG_RBNE);
-
-        RX1_Buffer[COM1.RX_write] = usart_data_receive(USART1);
-        if (++COM1.RX_write >= COM_RX1_Lenth)
-            COM1.RX_write = 0;
-    }
-
-#ifdef USART1_DMA
-
-#else
-
-    if (RESET != usart_interrupt_flag_get(USART1, USART_INT_FLAG_TBE))
-    {
-
-        usart_interrupt_flag_clear(USART1, USART_INT_FLAG_TBE);
-
-        if (COM1.TX_read != COM1.TX_write)
-        {
-            usart_data_transmit(USART1, TX1_Buffer[COM1.TX_read]);
-            if (++COM1.TX_read >= COM_TX1_Lenth)
-                COM1.TX_read = 0;
-        }
-        else
-        {
-
-            //						if(COM1.B_TX_busy ==0){
-            //
-            //									usart_data_transmit(USART1, TX1_Buffer[COM1.TX_read]);
-            //									COM1.B_TX_busy=1;
-            //						}
-            //						else{
-            //
-            //								COM1.B_TX_busy=0;
-            usart_interrupt_disable(USART1, USART_INT_TBE);
-            //						}
-        }
-    }
-
+    UART_ISR_RX(USART1, COM1, RX1_Buffer, COM_RX1_Lenth);
+#ifndef USART1_DMA
+    UART_ISR_TXE(USART1, COM1, TX1_Buffer, COM_TX1_Lenth);
 #endif
 }
 
+volatile uint8_t UART2_RE_TIMEOUT = 0;     // 超时计数器 (fallback)
+volatile uint8_t UART2_DATAPRO_SIGE = 0;   // IDLE帧结束信号
 void USART2_IRQHandler(void)
 {
-
+    // ① RBNE: 逐字节接收
     if (RESET != usart_interrupt_flag_get(USART2, USART_INT_FLAG_RBNE))
     {
-
         usart_interrupt_flag_clear(USART2, USART_INT_FLAG_RBNE);
-
         RX2_Buffer[COM2.RX_write] = usart_data_receive(USART2);
         if (++COM2.RX_write >= COM_RX2_Lenth)
             COM2.RX_write = 0;
+        UART2_RE_TIMEOUT = 0; // 超时清零
     }
-
-#ifdef USART2_DMA
-
-#else
-
-    if (RESET != usart_interrupt_flag_get(USART2, USART_INT_FLAG_TBE))
+    // ② IDLE: RX线路空闲 → 一帧接收完毕
+    if (RESET != usart_interrupt_flag_get(USART2, USART_INT_FLAG_IDLE))
     {
-
-        usart_interrupt_flag_clear(USART2, USART_INT_FLAG_TBE);
-
-        if (COM2.TX_read != COM2.TX_write)
-        {
-            usart_data_transmit(USART2, TX2_Buffer[COM2.TX_read]);
-            if (++COM2.TX_read >= COM_TX2_Lenth)
-                COM2.TX_read = 0;
-        }
-        else
-        {
-
-            //						if(COM2.B_TX_busy ==0){
-            //
-            //									usart_data_transmit(USART2, TX2_Buffer[COM2.TX_read]);
-            //									COM2.B_TX_busy=1;
-            //						}
-            //						else{
-            //
-            //								COM2.B_TX_busy=0;
-            usart_interrupt_disable(USART2, USART_INT_TBE);
-            //						}
-        }
+        // 清除IDLE标志: 读STAT0(_get已完成) + 读DR
+        usart_data_receive(USART2);
+        UART2_DATAPRO_SIGE = 1;
     }
-
+#ifndef USART2_DMA
+    UART_ISR_TXE(USART2, COM2, TX2_Buffer, COM_TX2_Lenth);
 #endif
 }
 
 void UART3_IRQHandler(void)
 {
-
-    if (RESET != usart_interrupt_flag_get(UART3, USART_INT_FLAG_RBNE))
-    {
-
-        usart_interrupt_flag_clear(UART3, USART_INT_FLAG_RBNE);
-
-        RX3_Buffer[COM3.RX_write] = usart_data_receive(UART3);
-        if (++COM3.RX_write >= COM_RX3_Lenth)
-            COM3.RX_write = 0;
-    }
-
-#ifdef UART3_DMA
-
-#else
-
-    if (RESET != usart_interrupt_flag_get(UART3, USART_INT_FLAG_TBE))
-    {
-
-        usart_interrupt_flag_clear(UART3, USART_INT_FLAG_TBE);
-
-        if (COM3.TX_read != COM3.TX_write)
-        {
-            usart_data_transmit(UART3, TX3_Buffer[COM3.TX_read]);
-            if (++COM3.TX_read >= COM_TX3_Lenth)
-                COM3.TX_read = 0;
-        }
-        else
-        {
-
-            //						if(COM3.B_TX_busy ==0){
-            //
-            //									usart_data_transmit(UART3, TX3_Buffer[COM3.TX_read]);
-            //									COM3.B_TX_busy=1;
-            //						}
-            //						else{
-            //
-            //								COM3.B_TX_busy=0;
-            usart_interrupt_disable(UART3, USART_INT_TBE);
-            //						}
-        }
-    }
-
+    UART_ISR_RX(UART3, COM3, RX3_Buffer, COM_RX3_Lenth);
+#ifndef UART3_DMA
+    UART_ISR_TXE(UART3, COM3, TX3_Buffer, COM_TX3_Lenth);
 #endif
 }
 
 void UART4_IRQHandler(void)
 {
+    UART_ISR_RX(UART4, COM4, RX4_Buffer, COM_RX4_Lenth);
 
-    if (RESET != usart_interrupt_flag_get(UART4, USART_INT_FLAG_RBNE))
-    {
-
-        usart_interrupt_flag_clear(UART4, USART_INT_FLAG_RBNE);
-
-        RX4_Buffer[COM4.RX_write] = usart_data_receive(UART4);
-        if (++COM4.RX_write >= COM_RX4_Lenth)
-            COM4.RX_write = 0;
-    }
-    //		usart_interrupt_flag_clear(USART0,USART_INT_FLAG_ERR_ORERR);
-
+    /* UART4 TBE handler with RS485 direction control (GPIO PD0) */
     if (RESET != usart_interrupt_flag_get(UART4, USART_INT_FLAG_TBE))
     {
-
         usart_interrupt_flag_clear(UART4, USART_INT_FLAG_TBE);
 
         if (COM4.TX_read != COM4.TX_write)
@@ -393,20 +252,15 @@ void UART4_IRQHandler(void)
             if (++COM4.TX_read >= COM_TX4_Lenth)
                 COM4.TX_read = 0;
         }
+        else if (COM4.B_TX_busy == 1)
+        {
+            usart_data_transmit(UART4, TX4_Buffer[COM4.TX_read]);
+            COM4.B_TX_busy = 0;
+        }
         else
         {
-
-            if (COM4.B_TX_busy == 1)
-            {
-
-                usart_data_transmit(UART4, TX4_Buffer[COM4.TX_read]);
-                COM4.B_TX_busy = 0;
-            }
-            else
-            {
-                gpio_bit_reset(GPIOD, GPIO_PIN_0);
-                usart_interrupt_disable(UART4, USART_INT_TBE);
-            }
+            gpio_bit_reset(GPIOD, GPIO_PIN_0);
+            usart_interrupt_disable(UART4, USART_INT_TBE);
         }
     }
 }
@@ -467,30 +321,61 @@ void DMA0_Channel0_IRQHandler(void)
     }
 }
 
+volatile uint32_t Leg_Debounce_tick = 0; // todo add 260527
 void EXTI5_9_IRQHandler(void)
 {
     if (RESET != exti_interrupt_flag_get(EXTI_5))
     {
-
         exti_interrupt_flag_clear(EXTI_5);
 
         if (DDGVariable.LDir == DDG_MotorState_Up)
         {
             DDGVariable.LCircleOutTime = 0;
-            if (DDGVariable.LnCurCircle)
-                DDGVariable.LnCurCircle--;
-            if (DDGVariable.LnLocalCircle > 0)
-                DDGVariable.LnLocalCircle--;
-            nPreLDDGCircle++;
+            // if (DDGVariable.LnCurCircle)
+            // {
+            //     DDGVariable.LnCurCircle--;
+            // }
+
+            // if (DDGVariable.LnLocalCircle > 0)
+            //     DDGVariable.LnLocalCircle--;
+            // nPreLDDGCircle++;
+
+            if (TICK_COUNTER(Leg_Debounce_tick, 5)) // todo md 260605
+            {
+                if (DDGVariable.LnCurCircle)
+                {
+                    DDGVariable.LnCurCircle--;
+                }
+
+                if (DDGVariable.LnLocalCircle > 0)
+                    DDGVariable.LnLocalCircle--;
+                nPreLDDGCircle++;
+            }
+            TICK_RESET(Leg_Debounce_tick);
         }
         else if (DDGVariable.LDir == DDG_MotorState_Down)
         {
             DDGVariable.LCircleOutTime = 0;
-            if (DDGVariable.LSignalInit)
-                DDGVariable.LnCurCircle++;
-            if (DDGVariable.LnLocalCircle > 0)
-                DDGVariable.LnLocalCircle--;
-            nPreLDDGCircle++;
+            // if (DDGVariable.LSignalInit)
+            // {
+            //     DDGVariable.LnCurCircle++;
+            // }
+            // if (DDGVariable.LnLocalCircle > 0)
+            //     DDGVariable.LnLocalCircle--;
+            // nPreLDDGCircle++;
+
+            if (TICK_COUNTER(Leg_Debounce_tick, 5)) // todo md 260605
+            {
+                if (DDGVariable.LSignalInit)
+                {
+                    DDGVariable.LnCurCircle++;
+                }
+
+                if (DDGVariable.LnLocalCircle > 0)
+                    DDGVariable.LnLocalCircle--;
+                nPreLDDGCircle++;
+            }
+            TICK_RESET(Leg_Debounce_tick);
         }
     }
 
@@ -526,23 +411,26 @@ void EXTI5_9_IRQHandler(void)
     }
 }
 
-#define ADC_MAXNUM 7
-uint16_t AD_Get_Value[ADC_MAXNUM];
-uint8_t GetValueFlag = 0;
+#define ADC_CHANNEL_COUNT   7    /* Number of ADC channels */
+#define ADC_SAMPLES_PER_CH  10   /* Samples collected per channel */
+#define ADC_FILTER_SAMPLES  (ADC_SAMPLES_PER_CH - 2) /* Samples after discarding 1 max + 1 min (=8) */
+
+volatile uint16_t AD_Get_Value[ADC_CHANNEL_COUNT];
+volatile uint8_t GetValueFlag = 0;
 
 void ADC_Process(void)
 {
     uint8_t i, j;
-    uint16_t AD_Temp_Value[7] = {0};
+    uint16_t AD_Temp_Value[ADC_CHANNEL_COUNT] = {0};
     uint16_t MaxValue, MinValue;
 
     if (ADC0_Finish)
     {
         ADC0_Finish = 0;
-        for (i = 0; i < ADC_MAXNUM; i++)
+        for (i = 0; i < ADC_CHANNEL_COUNT; i++)
         {
 
-            for (j = i; j <= (i + 63); j = j + ADC_MAXNUM)
+            for (j = i; j <= (i + (ADC_SAMPLES_PER_CH - 1) * ADC_CHANNEL_COUNT); j = j + ADC_CHANNEL_COUNT)
             {
 
                 if (GetValueFlag == 0)
@@ -560,19 +448,14 @@ void ADC_Process(void)
                 AD_Temp_Value[i] = AD_Temp_Value[i] + ADC0_Buffer[j];
             }
 
-            AD_Temp_Value[i] = (AD_Temp_Value[i] - MaxValue - MinValue) / 8;
+            AD_Temp_Value[i] = (AD_Temp_Value[i] - MaxValue - MinValue) / ADC_FILTER_SAMPLES;
             GetValueFlag = 0;
         }
 
-        for (i = 0; i < ADC_MAXNUM; i++)
+        for (i = 0; i < ADC_CHANNEL_COUNT; i++)
         {
 
             AD_Get_Value[i] = AD_Temp_Value[i];
         }
     }
-    //    TreadCurrent=AD_Get_Value[0]*33*1000/4095;
-    //    Roll1Current=AD_Get_Value[1]*33*1000/4095;
-    //    HeatCurrent=AD_Get_Value[2]*33*1000/4095;
-    //    KneadCurrent=AD_Get_Value[3]*33*1000/4095;
-    //    Roll2Current=AD_Get_Value[4]*33*1000/4095;
 }

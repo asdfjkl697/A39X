@@ -1,0 +1,78 @@
+{
+    // "C_Cpp.errorSquiggles": "disabled"
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/.history": true
+    },
+    //* 普通新增注释
+    //? 有疑问旧程序
+    //@ 常用变量标注
+    //todo 待确定或待验证的
+    //! 重要的地方，亟待验证修改
+    "better-comments.tags": [
+        {
+            "tag": "@", //自己定义一个字符串名字
+            "color": "#aaff00", //颜色
+            "strikethrough": false,
+            "backgroundColor": "transparent"
+        },
+        {
+            "tag": "!",
+            "color": "#FF2D00", //颜色
+            "strikethrough": false,
+            "backgroundColor": "transparent"
+        },
+        {
+            "tag": "?",
+            "color": "yellow", //颜色 草绿
+            "strikethrough": false,
+            "backgroundColor": "transparent"
+        },
+        {
+            "tag": "//",
+            "color": "#474747", //颜色
+            "strikethrough": true,
+            "backgroundColor": "transparent"
+        },
+        {
+            "tag": "todo", //颜色
+            "color": "#FF8C00",
+            "strikethrough": false,
+            "backgroundColor": "transparent"
+        },
+        {
+            "tag": "*", //颜色
+            "color": "#bbbb00",
+            "strikethrough": false,
+            "backgroundColor": "transparent"
+        }
+    ],
+    "files.associations": {
+        "movelogic.h": "c",
+        "bluetemp.h": "c",
+        "config.h": "c",
+        "main.h": "c",
+        "gd32f30x_it.h": "c",
+        "systick.h": "c",
+        "air.h": "c",
+        "heat.h": "c",
+        "display.h": "c",
+        "motor.h": "c",
+        "at.h": "c",
+        "table.h": "c",
+        "workstate.h": "c",
+        "massageinit.h": "c",
+        "leg.h": "c",
+        "moveup_n.h": "c",
+        "movedw.h": "c",
+        "handler.h": "c",
+        "voice.h": "c",
+        "fmc.h": "c"
+    },
+    "C_Cpp.dimInactiveRegions": true,
+}

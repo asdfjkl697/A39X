@@ -41,298 +41,36 @@ OF SUCH DAMAGE.
 #include "systick.h"
 #include "config.h"
 #include "main.h"
+#include "Table.h"        // * 250829
+#include "MassageLogic.h" // * add 250925
+#include "MassageEXEC.h"
+#include "FUJIApp.h" //@ add for blueota 260303
 
-#define TxChMax 4
-uint8_t TxPolling = 0;
-uint8_t TxPollingPre;
-uint8_t TxKeepCnt = 0;
+/* Task timing defines (SysTick period = 1ms) */
+#define TASK_PERIOD_25MS     5    /* 5 × 1ms (Timer_5ms_Cnt) trigger at ~25ms */
+#define TASK_PERIOD_100MS    100  /* 100 × 1ms = 100ms */
+#define TASK_PERIOD_200MS    200  /* 200 × 1ms = 200ms */
+#define TASK_PERIOD_1S       5    /* 5 × 200ms = 1s (count of Timer_200ms_Cnt rollovers) */
+
+/* Aging mode (LC) timing */
+#define LC_CYCLE_MINUTES     76   /* Total cycle: 75 minutes + 1 minute resume buffer */
+#define LC_PAUSE_MINUTES     16   /* Enter pause at 16 minutes remaining */
+#define LC_PAUSE_THRESHOLD_SEC 3 /* Resume when seconds drop below this in pause window */
+
 uint8_t PumpState = 0;
 
 uint8_t LegResetStep = 0;
-uint8_t MoveDwResetStep = 0;
-uint8_t MoveUpResetStep = 0;
-
 uint8_t Core_RestSuccess = 0;
-void _485ComRx(void)
-{
-
-    u8 data;
-
-    while(COM4.RX_read != COM4.RX_write)
-    {
-
-        data = EUART4_Read();
-
-        MoveUpDataTx(data);
-        MoveDwDataTx(data);
-        LegDataRx(data);
-        ArmKeyDataTx(data);
-    }
-}
-
-void MoveUp_Rest(void)
-{
-    uint16_t MovoUpCurrent = 0;
-
-    switch(MoveUpResetStep)
-    {
-        case 0:
-            MoveUpKneadStateSet(7, 3, 0);
-
-            if(MoveComplete == GetMoveUpDataTx()->Knead.State)
-            {
-                MoveUpKneadStateSet(0, 0, 0);
-                MoveUpResetStep++;
-            }
-
-            break;
-
-        case 1:
-            MoveUpTapStateSet(0);
-            MoveUpTx_DriveCmd = 1;
-            MoveUpResetStep++;
-            break;
-
-        case 2:
-            MovoUpCurrent = (GetMoveUpDataTx()->Tap.Current_L8) | (GetMoveUpDataTx()->Tap.Current_H8 << 8);
-
-            if(0 == MovoUpCurrent)
-            {
-                MoveUpResetStep++;
-            }
-
-            break;
-
-        case 3:
-            MoveUpKneadStateSet(5, 3, 65);
-            MoveUpFlexStateSet(2, 3, 0);
-            MoveUpTx_DriveCmd = 1;
-            MoveUpResetStep++;
-            break;
-
-        case 4:
-            if(MoveForeward == GetMoveUpDataTx()->Knead.State)
-            {
-                MoveUpResetStep++;
-            }
-
-            break;
-
-        case 5:
-            if(((GetMoveUpDataTx()->Knead.State == MoveComplete) || (GetMoveUpDataTx()->Knead.State == MoveStop)) && ((GetMoveUpDataTx()->Flex.Place == MassPlace_Bot)))  // todo 修改 250218
-            {
-                MoveUpKneadStateSet(0, 0, 0);
-                MoveUpFlexStateSet(0, 0, 0);
-                MoveUpResetStep++;
-            }
-
-            break;
-
-        case 6:
-            MoveUpTreadStateSet(1, 5, 0); // todo 复位速度 最快3-5
-            MoveUpTx_DriveCmd = 1;
-            MoveUpResetStep++;
-            break;
-
-        case 7:
-            if((MoveForeward == GetMoveUpDataTx()->Tread.State) || (UpTreadPlace & MassPlace_Top))
-            {
-                MoveUpResetStep++;
-            }
-
-            break;
-
-        case 8:
-            if((GetMoveUpDataTx()->Tread.State == MoveComplete) || (GetMoveUpDataTx()->Tread.State == MoveStop) || ((UpTreadPlace & MassPlace_Top) == MassPlace_Top))
-            {
-                MoveUpTreadStateSet(5, 3, 150);
-                //              if(MoveBack == GetMoveUpDataTx()->Tread.State)
-                MoveUpResetStep++;
-            }
-
-            break;
-
-        case 9:
-            if(MoveBack == GetMoveUpDataTx()->Tread.State)
-            {
-                MoveUpResetStep++;
-            }
-
-            break;
-
-        case 10:
-            if((GetMoveUpDataTx()->Tread.State == MoveComplete) || (GetMoveUpDataTx()->Tread.State == MoveStop))
-            {
-                MoveUpTreadStateSet(0, 0, 0);
-                MoveUpKneadStateSet(5, 3, 0);
-                MoveUpTx_DriveCmd = 1;
-                MoveUpResetStep++;
-            }
-
-            break;
-
-        case 11:
-            if(MoveForeward == GetMoveUpDataTx()->Knead.State)
-            {
-                MoveUpResetStep++;
-            }
-
-            break;
-
-        case 12:
-            if((GetMoveUpDataTx()->Knead.State == MoveComplete) || (GetMoveUpDataTx()->Knead.State == MoveStop))
-            {
-                MoveUpKneadStateSet(0, 0, 0);
-
-                MoveUpResetStep = 0;
-#if (USE_M2)
-                Core_RestSuccess |= 0x01; /* 初始化完成 */
-#else
-                Core_RestSuccess |= 0x03; /* 初始化完成 */
-#endif
-            }
-
-            break;
-
-        default:
-            break;
-    }
-}
-
-/*****************************************************************************************************
- * 描述：下机芯复位动作
- * 参数：无
- * 返回：无
- * 注意：上电复位动作，需要监测各类信号并做出相应动作；机芯上电计数位置不确定
- *****************************************************************************************************/
-void MoveDw_Rest(void)
-{
-    //  uint16_t MovoDwCurrent = 0;
-
-    switch(MoveDwResetStep)
-    {
-        case 0:
-            MoveDwTapStateSet(0);
-            MoveDwKneadStateSet(7, 3, 0);
-
-            if(MoveComplete == GetMoveDwDataTx()->Knead.State)
-            {
-                MoveDwKneadStateSet(0, 0, 0);
-                MoveDwResetStep++;
-            }
-
-            break;
-
-        case 1:
-            MoveDwKneadStateSet(5, 3, 0);
-
-            if((MoveForeward == GetMoveDwDataTx()->Knead.State) || (MoveBack == GetMoveDwDataTx()->Knead.State))
-            {
-                MoveDwResetStep++;
-            }
-
-            break;
-
-        case 2:
-            if(MoveComplete == GetMoveDwDataTx()->Knead.State)
-            {
-                MoveDwKneadStateSet(0, 0, 68);
-                MoveDwResetStep++;
-            }
-
-            break;
-
-        case 3:
-            MoveDwTreadStateSet(2, 5, 0); // todo 复位速度 最快3-5
-
-            if((GetMoveDwDataTx()->Tread.Place & MassPlace_Bot) == MassPlace_Bot)
-            {
-                MoveDwTreadStateSet(0, 0, 0);
-                MoveDwResetStep = 0;
-                Core_RestSuccess |= 0x02;
-            }
-
-            break;
-    }
-}
-
-void CoreRest(void)
-{
-    //  if (Core_RestSuccess != 0x03)
-    //  {
-    //      MoveUp_Rest();
-    // #if (USE_M2)
-    //      MoveDw_Rest();
-    // #endif
-    //  }
-    if((Core_RestSuccess & 0x01) == 0x00)  // todo 修改 250215
-    {
-        MoveUp_Rest();
-    }
-
-#if (USE_M2)
-
-    if((Core_RestSuccess & 0x02) == 0x00)
-    {
-        MoveDw_Rest();
-    }
-
-#else
-    Core_RestSuccess |= 0x02; // todo 单机芯下机芯直接复位成功
-#endif
-}
 
 void Variable_Init(void)
 {
-    Flash_Parameter_read();
-#ifndef Handle_Old_Version
-    User_Memory_Use_DIY(); // todo 增加
+#ifdef PART_USE_SUM_TIME
+    Flash_PART_USE_read();
 #endif
-    KeyPush.WiseKeyState = 0; // todo 初始化把这个标志位清零 250304
-}
-
-// todo 调试
-u8 Debug_Para = 0;
-void Debug_Pro(void)
-{
-    if(Debug_Para == 0)
-    {
-        return;
-    }
-
-    if(Debug_Para == 1)
-    {
-        Key.State = 2;
-        Key.Value = Key_Power;
-        Key.Param = 0;
-    }
-    else if(Debug_Para < 21)
-    {
-        Key.State = 2;
-        Key.Value = Key_AutoMode;
-        Key.Param = Debug_Para;
-    }
-    else if(Debug_Para == 21)
-    {
-        Key.State = 2;
-        Key.Value = Key_BodyCheck_Jump;
-    }
-    else if(Debug_Para == 22)
-    {
-        Key.State = 2;
-        Key.Value = Key_Wise;
-        Key.Param = 0;
-    }
-    else if(Debug_Para == 23)  // todo 模拟气压按键测试
-    {
-        Key.State = 2;
-        Key.Value = Key_Air;
-        Key.Param = 3;
-    }
-
-    KeyFunc();
-
-    Debug_Para = 0;
+    BodyPlaceCal(DEFAULT_SHOULDER); // * 上电给默认位置 250414
+    Flash_Parameter_read();
+    User_Memory_Use_DIY();    // * 增加自定义读取
+    KeyPush.WiseKeyState = 0; // * 初始化把这个标志位清零 250304
 }
 
 /*!
@@ -344,19 +82,23 @@ void Debug_Pro(void)
 int main(void)
 {
     nvic_vector_table_set(NVIC_VECTTAB_FLASH, 0x4000);
-	
+
     /* configure systick */
     systick_config();
-	__enable_irq();
+    __enable_irq();
     ota_init();
     UserConfig();
     AirInit();
+#ifdef USE_AIRSENSOR
+    AirSensor_Init(); // todo add 260629
+#endif
+    Motor_Work_Iint(); // * add 251010
     HeatInit();
     Motor_Init();
     PowerInit();
     ArmKeyInit();
     LegInit();
-    MoveUpInit();
+    // MoveUpInit();
     AT_Init();
     rgbInit();
     Blue_Init();
@@ -364,16 +106,21 @@ int main(void)
     Variable_Init(); //* 增加 变量初始化
     UserFunc_Set(UserFunc_PowerOff, 0);
 
-    while(1)
-    {
+#ifdef USE_WDT_ENABLE
+    fwdgt_init();
+#endif
 
+    while (1)
+    {
         PowerProcess();
         ADC_Process();
         // 蓝牙
         os_task_BlueRx();
         os_task_blue(TASK_ID_BLUE);
         os_task_voice(TASK_ID_VOICE);
+#if (USE_BLUE_APP == 1)
         os_task_app(TASK_ID_APP);
+#endif
 
 #if (USE_Health_Check)
         os_task_Health(TASK_ID_HEALTH);
@@ -381,189 +128,126 @@ int main(void)
 
         // 声控
         VoiceControl_Handler();
-        _485ComRx();
+        _485_ComRx();
 
-        Light_Update();
+        // Light_Update(); //* rm 250926
 
-        KeyCom_Handler();    /* 手控器接收数据 */
-        KeyEncoderHandler(); /* 按键板编码器处理 */
+        KeyCom_Handler(); /* 手控器接收数据 */
 
-        ErrorCheckProcess(); // todo 故障代码
-#ifndef J0201_LC
-
-        if(MChair.CFG.Bit.CoreReset)
-        {
-            CoreRest();
-        }
-
+#ifdef USE_AIRSENSOR
+        AirSensor_Handler(); // todo add 260629
 #endif
 
-        if(Timer_5ms_Cnt > 5)
+        CoreRest(); /* 机芯复位 */
+
+        if (Timer_5ms_Cnt > TASK_PERIOD_25MS)
         {
             OS_RTC_TICK++;
             Timer_5ms_Cnt = 0;
-            MotorProcess();
-            // if (Flash_Check_Tick > 0) // todo 修改成 关机保存
-            // {
-            //  if (--Flash_Check_Tick == 0)
-            //  {
-            //      Flash_Parameter_Write();
-            //  }
-            // }
-        }
-
-        if(Timer_50ms_Cnt > 50)
-        {
-            Timer_50ms_Cnt = 0;
-
-            /*485轮询通讯*/
-            if(TxPolling >= TxChMax)
-            {
-                TxPolling = 0;
-            }
-
-            if(TxPollingPre != TxPolling)
-            {
-                TxKeepCnt = 0;
-                TxPollingPre = TxPolling;
-            }
-            else
-            {
-                TxKeepCnt++;    /* 若只有一个通讯设备，该处屏蔽，一般不需要屏蔽 */
-            }
-
-            if(TxKeepCnt > 3)
-            {
-                switch(TxPolling)
-                {
-                    case 0:
-                        ArmKeyTx_DriveCmd = 1;
-                        break;
-
-                    case 1:
-                        LegTx_DriveCmd = 1;
-                        break;
-
-                    case 2:
-                        MoveUpTx_DriveCmd = 1;
-                        break;
-
-                    case 3:
-                        MoveDwTx_DriveCmd = 1;
-                        break;
-                }
-
-                TxPolling++;
-                TxKeepCnt = 0;
-            }
-
-            switch(TxPolling)
-            {
-
-                case 0:
-
-                    ArmKeyDataRx();
-                    break;
-
-                case 1:
-
-                    LegDataTx();
-                    break;
-
-                case 2:
-
-                    MoveUpDataRx();
-                    break;
-
-                case 3:
-
-                    MoveDwDataRx(); /* 陈工写的Rx为目标板动作而非主板动作，后续看情况修改 */
-                    break;
-            }
-
-            /*------------------------------------------------------------------------------------*/
-        }
-
-        if(Timer_100ms_Cnt >= 100)
-        {
-
-            Timer_100ms_Cnt = 0;
-
-            Health_OutTime_Hand();
-
-            if(nPlay_time)
-            {
-                nPlay_time--;
-            }
-
-            // Display_Drive(); // todo 100ms->200ms->100ms 250321
-            AT_Process();
-            AirProcess();
-            WorkStateProcess(); /* 工作状态调度 */
-            HeatProcess();
-            KeyPowerScan();
-
-            FootRollProcess();
-            CalfKneadProcess();
-        }
-
-        if(Timer_200ms_Cnt >= 200)
-        {
-            Timer_200ms_Cnt = 0;
-
-            Timer_1s_Cnt++;
-            BackPosUpdate();
-            Display_Drive(); // todo 100ms ->200ms 250318
-#ifdef LED2_PWM
-            Led_Pwm_Update();
+            MotorProcess();  //* 靠背、小腿 执行
+            RS485_Polling(); //* 485轮询 执行 上下机芯 小腿 扶手按键
+#if (USE_BLUE_APP == 8)
+            if (OS_RTC_TICK & 0x01)  //* 借用时基
+                FUJIApp_Deal_10ms(); // todo add for blueota 260303
 #endif
         }
 
-        if(Timer_1s_Cnt >= 5)
+        if (Timer_100ms_Cnt >= TASK_PERIOD_100MS)
+        {
+            Timer_100ms_Cnt = 0;
+            Health_OutTime_Hand();
+            BluePlay_time(); //* 播放时间--
+            KeyPowerScan();
+            KeyEncoderHandler(); /* 按键板编码器处理 */
+#ifdef USE_S0555
+            Display_Drive(); //* 手控器显示 100ms ->200ms 250318
+#endif
+
+            WorkStateProcess(); //* 工作状态调度
+            AT_Process();       //* 读表
+            RS485_Poll_Reset(); //* 读表发送补丁 251104
+
+            MassageLogic_Process(); //* 配置逻辑
+            AirLogic_Process();     //* 气压配置逻辑
+
+            Part_EXEC_Process(); //* 部件执行
+#ifdef USE_WDT_ENABLE
+            feed_watchdog();
+#endif
+        }
+
+        if (Timer_200ms_Cnt >= TASK_PERIOD_200MS)
+        {
+            Timer_200ms_Cnt = 0;
+            Timer_1s_Cnt++;
+            // BackPosUpdate();
+#ifndef USE_S0555
+            Display_Drive(); //* 手控器显示 100ms ->200ms 250318
+#endif
+#ifdef LED2_PWM
+            Led_Pwm_Update(); // * 呼吸灯
+#endif
+            ErrorCheckProcess(); // * 主板直接检测故障代码  转移到这里 250926
+        }
+
+        if (Timer_1s_Cnt >= TASK_PERIOD_1S)
         {
             Timer_1s_Cnt = 0;
 
             MCU_LedProcess();
-            Eor_Update();
-            Debug_Pro(); // todo 调试程序 250210
-#ifdef A391S_LC
-
-            if(AutoModeGet() == 19)  // todo 19号暂时为 老化程序 250305
-            {
-                nLCState = 1;
-            }
-            else
-            {
-                nLCState = 0;
-            }
-
+            Eor_Update(); // * 故障代码更新
+#ifdef PART_USE_SUM_TIME
+            PartUse_Process_S(); // * 增加部件运行时间
+#endif
+#ifdef Debug_Mode
+            Debug_Pro();
 #endif
 
-            if(!nLCState)  // 非老化模式下需要定时
+            //* 非老化模式下需要定时 定时结束后不计时 250403
+#ifdef A39X_LC
+            if ((WorkStateGet() == WorkState_Work) || (WorkStateGet() == WorkState_Pause && nLCState)) //* 增加老化停止判断 250423
+#else
+            if (WorkStateGet() == WorkState_Work)
+#endif
             {
-                if(WorkStateGet() == WorkState_Work)
+#ifdef A39X_LC
+                if (nLCState)
                 {
-                    if(WorkSecGet() > 0)
+                    if (WorkMinGet() == 0)
                     {
-                        WorkSecSet(WorkSecGet() - 1);
+                        WorkMinSet(LC_CYCLE_MINUTES); // * 75分钟循环 250423
+                        WorkSecSet(0);
+                        Exit_Pause();
+                    }
+                    if (WorkMinGet() == LC_PAUSE_MINUTES && WorkSecGet() < LC_PAUSE_THRESHOLD_SEC)
+                    {
+                        WorkMinSet(15);
+                        WorkSecSet(59);
+                        Enter_Pause();
+                    }
+                }
+#endif
+                if (WorkSecGet() > 0)
+                    WorkSecSet(WorkSecGet() - 1);
+                else
+                {
+                    if (WorkMinGet() > 0)
+                    {
+#ifdef PART_USE_SUM_TIME
+                        PartUse_Process_Min(); // * 增加部件运行时间
+#endif
+                        WorkMinSet(WorkMinGet() - 1);
+                        WorkSecSet(59);
                     }
                     else
                     {
-                        if(WorkMinGet() > 0)
+                        if (nTimOutResetSw)
                         {
-                            WorkMinSet(WorkMinGet() - 1);
-                            WorkSecSet(59);
+                            UserFunc_Set(UserFunc_PowerOff, 0);
                         }
                         else
                         {
-                            if(nTimOutResetSw)
-                            {
-                                UserFunc_Set(UserFunc_PowerOff, 0);
-                            }
-                            else
-                            {
-                                UserFunc_Set(UserFunc_PowerOff, 1);
-                            }
+                            UserFunc_Set(UserFunc_PowerOff, 1);
                         }
                     }
                 }

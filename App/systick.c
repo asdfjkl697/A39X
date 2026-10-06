@@ -41,6 +41,26 @@ OF SUCH DAMAGE.
 
 volatile static uint32_t delay;
 
+// * 独立看门狗初始化
+void fwdgt_init(void)
+{
+    rcu_osci_on(RCU_IRC40K); // 使能IRC40K时钟
+    while (ERROR == rcu_osci_stab_wait(RCU_IRC40K))
+        ;                 // 等待IRC40K稳定
+    fwdgt_write_enable(); // 解除写保护
+    // fwdgt_config(2000, FWDGT_PSC_DIV128); // 设置超时时间2秒
+    fwdgt_config(1000, FWDGT_PSC_DIV128); // todo 设置超时时间3.2秒 md 260603
+    fwdgt_write_disable();               // 重新启用写保护
+    fwdgt_enable();                      // 启动看门狗
+}
+
+// 喂狗函数
+void feed_watchdog(void)
+{
+    fwdgt_counter_reload(); // 喂独立看门狗
+    // wwdgt_counter_update(80); // 喂窗口看门狗
+}
+
 /*!
     \brief      configure systick
     \param[in]  none

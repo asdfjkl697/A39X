@@ -57,6 +57,7 @@ __heap_base
 Heap_Mem        SPACE   Heap_Size
 __heap_limit
 
+
                 PRESERVE8
                 THUMB
 

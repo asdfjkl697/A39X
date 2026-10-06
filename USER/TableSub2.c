@@ -216,6 +216,97 @@ const CoreMixOtherTabItem_t Sub2Tab_TLI[] = {
 	{Part_STOP, 0, 0, 0, 0},
 };
 
+//* RNZFD 不对称揉捏(反揉到最窄+正揉到宽)
+const CoreMixOtherTabItem_t Sub2Tab_RNZFD[] = {
+	// A670-6: KneadLC,4→KneadRC,2 (最窄4→宽2方向)
+	// A39X: 反揉到最窄位W1→正揉到宽位W2
+
+	{Part_LOOP, ConMth_Loop, 0, 4, 0},
+	{MoveUp_Knead, KNEAD_REV_ABS, MOVEUPWIDTH1, 0, 4}, // * 反揉到最窄位(40)
+	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+	{MoveUp_Knead, KNEAD_FWD_ABS, MOVEUPWIDTH2, 0, 4}, // * 正揉到宽位(49)
+	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+
+	{Part_STOP, 0, 0, 0, 0},
+};
+
+//* RNZFS 不对称揉捏(正揉到最窄+反揉到更宽)
+const CoreMixOtherTabItem_t Sub2Tab_RNZFS[] = {
+	// A670-6: KneadRC,4→KneadLC,6 (最窄4→宽6方向)
+	// A39X: 正揉到最窄位W1→反揉到更宽位W3
+
+	{Part_LOOP, ConMth_Loop, 0, 4, 0},
+	{MoveUp_Knead, KNEAD_FWD_ABS, MOVEUPWIDTH1, 0, 4}, // * 正揉到最窄位(40)
+	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+	{MoveUp_Knead, KNEAD_REV_ABS, MOVEUPWIDTH3, 0, 4}, // * 反揉到更宽位(55)
+	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+
+	{Part_STOP, 0, 0, 0, 0},
+};
+
+//* PLSE 脉冲揉捏(快揉爆发+停顿呼吸)
+const CoreMixOtherTabItem_t Sub2Tab_PLSE[] = {
+	// 脉冲体感：高速揉捏3圈→停顿1.5s→反向3圈→停顿→重复
+
+	{Part_LOOP, ConMth_Loop, 0, 8, 0},
+	{MoveUp_Knead, KNEAD_FWD_CNT, 3, 0, 6}, // * 高速正揉3圈
+	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+	{MoveUp_Knead, KNEAD_REV_CNT, 3, 0, 6}, // * 高速反揉3圈
+	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+	{MoveUp_Knead, KNEAD_STOP, 0, 0, 0}, // * 停顿
+	{Part_EXEC, ConMth_MoveUp, 15, 30, 0}, // * 呼吸1.5秒
+
+	{Part_STOP, 0, 0, 0, 0},
+};
+
+//* TKSTG 拍揉交替(拍→揉→拍→揉 错落有致)
+const CoreMixOtherTabItem_t Sub2Tab_TKSTG[] = {
+	// 交替体感：拍打和揉捏不同时，轮流出现
+
+	{Part_LOOP, ConMth_Loop, 0, 10, 0},
+	{MoveUp_Tap, FLAP_ACT, 0, 0, 3}, // * 拍打
+	{Part_EXEC, ConMth_MoveUp, 15, 30, 0}, // * 拍1.5秒
+	{MoveUp_Tap, FLAP_STOP, 0, 0, 0}, // * 停拍
+	{MoveUp_Knead, KNEAD_FWD_CNT, 3, 0, 4}, // * 正揉3圈
+	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+	{MoveUp_Knead, KNEAD_REV_CNT, 3, 0, 4}, // * 反揉3圈
+	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+
+	{Part_STOP, 0, 0, 0, 0},
+};
+
+//* RMPUP 渐快揉捏(慢→中→快 层层递进)
+const CoreMixOtherTabItem_t Sub2Tab_RMPUP[] = {
+	// 加速体感：揉捏速度逐级攀升，产生期待感
+
+	{Part_LOOP, ConMth_Loop, 0, 10, 0},
+	{MoveUp_Knead, KNEAD_FWD_CNT, 2, 0, 2}, // * 慢速2圈
+	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+	{MoveUp_Knead, KNEAD_FWD_CNT, 3, 0, 4}, // * 中速3圈
+	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+	{MoveUp_Knead, KNEAD_FWD_CNT, 3, 0, 6}, // * 快速3圈
+	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+	{MoveUp_Knead, KNEAD_STOP, 0, 0, 0}, // * 停顿
+	{Part_EXEC, ConMth_MoveUp, 10, 30, 0}, // * 呼吸1秒
+
+	{Part_STOP, 0, 0, 0, 0},
+};
+
+//* INWAV 力度波浪(深→浅→深 如呼吸起伏)
+const CoreMixOtherTabItem_t Sub2Tab_INWAV[] = {
+	// 波浪体感：Flex深度交替，像潮汐呼吸
+
+	{Part_LOOP, ConMth_Loop, 0, 8, 0},
+	{MoveUp_Flex, FLEX_FIX_CIRCLE, 22, 0, 3}, // * 深层顶出
+	{Part_EXEC, ConMth_MoveUp, 25, 30, 0}, // * 保持2.5秒
+	{MoveUp_Flex, FLEX_FIX_CIRCLE, 8, 0, 3}, // * 浅层收回
+	{Part_EXEC, ConMth_MoveUp, 20, 30, 0}, // * 保持2秒
+	{MoveUp_Knead, KNEAD_FWD_CNT, 3, 0, 4}, // * 揉捏过渡
+	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+
+	{Part_STOP, 0, 0, 0, 0},
+};
+
 //* 子程序工作模式索引表
 ActionTabAttr_t Sub2Mode_Addr[] = {
 	{SUB2TB_CLOSE, NULL},
@@ -230,6 +321,12 @@ ActionTabAttr_t Sub2Mode_Addr[] = {
 	{SUB2TB_TLG, (void *)Sub2Tab_TLG}, // * 腰部顶揉(强力度)
 	{SUB2TB_TLH, (void *)Sub2Tab_TLH}, // * 背部推揉(舒适)
 	{SUB2TB_TLI, (void *)Sub2Tab_TLI}, // * 背部推揉(强力度)
+	{SUB2TB_RNZFD, (void *)Sub2Tab_RNZFD}, // * 不对称揉捏(正4反2)
+	{SUB2TB_RNZFS, (void *)Sub2Tab_RNZFS}, // * 不对称揉捏(正4反6)
+	{SUB2TB_PLSE, (void *)Sub2Tab_PLSE},   // * 脉冲揉捏(快揉+停顿)
+	{SUB2TB_TKSTG, (void *)Sub2Tab_TKSTG}, // * 拍揉交替(拍→揉→拍→揉)
+	{SUB2TB_RMPUP, (void *)Sub2Tab_RMPUP}, // * 渐快揉捏(慢→中→快)
+	{SUB2TB_INWAV, (void *)Sub2Tab_INWAV}, // * 力度波浪(深→浅→深)
 };
 
 #define Sub2ModeMaxAddr sizeof(Sub2Mode_Addr) / sizeof(Sub2Mode_Addr[0])

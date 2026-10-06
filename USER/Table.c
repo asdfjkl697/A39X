@@ -3234,6 +3234,98 @@ const CoreMixOtherTabItem_t Table_Auto25[] = {
 	{Part_EXEC, ConMth_AC, 0, 0, 0}, // * 复位
 };
 
+//@ 新体感
+const CoreMixOtherTabItem_t Table_NewSense[] = {
+
+	// * --- Phase 1: 热身 (不对称揉捏) ---
+#ifdef USE_M2
+	{Part_MVDW, PartCon_Stop, 0, 0, 0},
+	{MoveDw_TreadF, FOLW_SPACE, Follow_Space & 0xff, Follow_Space >> 8, 0},
+	{MoveDw_TapF, FOLW_STOP, 0, 0, 0},
+	{MoveDw_KneadF, FOLW_STOP, 0, 0, 0},
+	{MoveDw_Knead, KNEAD_FWD, 0, 0, 6},
+#endif
+	{Part_AIR, PartCon_Stop, 0, 0, 0},
+	{Air_UpDw, B(00000000), 0, 0, 0}, // * 释放气压
+	{Motor_Feet, MotorPart_FWD, 0, 0, 0}, //* 开启足底滚轮
+	{MoveUp_Knead, KNEAD_FIX_CIRCLE, MOVEUPWIDTH1, 0, 5},
+	{MoveUp_Flex, FLEX_FIX_CIRCLE, 6, 0, 3},
+	{MoveUp_Tap, FLAP_STOP, 0, 0, 0},
+	{MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_2, 0, 4},
+	{Part_EXEC, ConMth_MoveUp, 20, 30, 0},
+
+	// * RNZFD 全背热身
+	{Part_SUB2, ConMth_Loop, SUB2TB_RNZFD, 4, 0}, // * 不对称揉捏
+	{MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_6, 0, 2},
+	{Part_EXEC, ConMth_MoveUp, 5, 30, 0},
+	{Part_SUB2, ConMth_Loop, SUB2TB_RNZFD, 3, 0},
+	{MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_9, 0, 2},
+	{Part_EXEC, ConMth_MoveUp, 5, 30, 0},
+
+	// * --- Phase 2: 肩颈新体感 (Zero G 3) ---
+	{Part_AIR, PartCon_Run, FA_GAS_Full, 0, 0},
+	{Motor_Feet, MotorPart_FWD, 0, 0, 0},
+	{Motor_Zero, MotorPart_Stretch, DDG_BCircle_Zero3, DDG_LCircle_Zero3, 0}, //* 零重力3档
+
+	{MoveUp_Knead, KNEAD_FIX_CIRCLE, MOVEUPWIDTH1, 0, 4}, // * 窄幅
+	{MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_1, 0, 2},
+	{Part_EXEC, ConMth_MoveUp, 2, 30, 0},
+
+	{Part_SUB2, ConMth_Loop, SUB2TB_TLB, 3, 0}, // * 提拉颈部
+	{Part_SUB2, ConMth_Loop, SUB2TB_PLSE, 4, 0}, // * 脉冲揉捏
+	{Part_SUB2, ConMth_Loop, SUB2TB_TLD, 3, 0}, // * 肩部揉按
+
+	// * --- Phase 3: 背部新体感 (Zero G 2) ---
+	{Motor_Zero, MotorPart_Stretch, DDG_BCircle_Zero2, DDG_LCircle_Zero2, 0}, //* 零重力2档
+
+	{MoveUp_Knead, KNEAD_FIX_CIRCLE, MOVEUPWIDTH1, 0, 4}, // * 窄幅 肩胛骨保护
+	{MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_5, 0, 2},
+	{Part_EXEC, ConMth_MoveUp, 2, 30, 0},
+
+	{Part_SUB2, ConMth_Loop, SUB2TB_TKSTG, 3, 0}, // * 拍揉交替
+	{Part_SUB2, ConMth_Loop, SUB2TB_RMPUP, 3, 0}, // * 渐快揉捏
+	{Part_SUB2, ConMth_Loop, SUB2TB_TLH, 2, 0},   // * 背部推揉 窄幅
+
+	{MoveUp_Knead, KNEAD_FIX_CIRCLE, MOVEUPWIDTH1, 0, 4},
+	{MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_7, 0, 2},
+	{Part_EXEC, ConMth_MoveUp, 2, 30, 0},
+
+	{Part_SUB2, ConMth_Loop, SUB2TB_INWAV, 3, 0}, // * 力度波浪
+	{Part_SUB2, ConMth_Loop, SUB2TB_RNZFS, 3, 0}, // * 不对称深揉
+
+	// * --- Phase 4: 腰部新体感 (Zero G 2) ---
+#ifdef USE_M2
+	{MoveDw_TreadF, FOLW_SPACE, Follow_Space & 0xff, Follow_Space >> 8, 0},
+	{MoveDw_KneadF, FOLW_COPY, 0, 0, 0},
+	{MoveDw_Tap, FLAP_STOP, 0, 0, 0},
+#endif
+
+	{MoveUp_Knead, KNEAD_FIX_CIRCLE, MOVEUPWIDTH1, 0, 4},
+	{MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_8, 0, 2},
+	{Part_EXEC, ConMth_MoveUp, 2, 30, 0},
+
+	{Part_SUB2, ConMth_Loop, SUB2TB_TLF, 3, 0}, // * 腰部顶揉
+
+	{MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_9, 0, 2},
+	{Part_EXEC, ConMth_MoveUp, 2, 30, 0},
+
+	{Part_SUB2, ConMth_Loop, SUB2TB_RNZFS, 3, 0}, // * 不对称深揉
+
+	// * --- Phase 5: 收尾 (Zero G 2) ---
+	{Motor_Zero, MotorPart_Stretch, DDG_BCircle_Zero2, DDG_LCircle_Zero2, 0}, //* 零重力2档
+
+	{MoveUp_Knead, KNEAD_FIX_CIRCLE, MOVEUPWIDTH1, 0, 3},
+	{MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_2, 0, 3},
+	{MoveUp_Flex, FLEX_BACK_FORTH, 15, 0, 5},
+	{MoveUp_Tap, FLAP_STOP, 0, 0, 0},
+	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+
+	{MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_9, 0, 3},
+	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+
+	{Part_EXEC, ConMth_AC, 0, 0, 0}, // * 复位
+};
+
 ActionTabAttr_t MassMode_Addr[] = {
 	{FA_AUTO_CLOSE, NULL},
 #ifdef VIETNAM_VOICE
@@ -3268,7 +3360,7 @@ ActionTabAttr_t MassMode_Addr[] = {
 	{FA_AUTO_AUTO3, (void *)Table_Auto3},
 	{FA_AUTO_AUTO4, (void *)Table_Auto4},
 	{FA_AUTO_AUTO5, (void *)Table_Auto5},
-	{FA_AUTO_AUTO6, (void *)Table_Auto6},
+	{FA_AUTO_AUTO6, (void *)Table_NewSense}, //* 新体感 (屏蔽旧程序)
 	{FA_AUTO_AUTO7, (void *)Table_Auto7},
 	{FA_AUTO_AUTO8, (void *)Table_Auto8},
 	{FA_AUTO_AUTO9, (void *)Table_Auto9},
