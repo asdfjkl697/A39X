@@ -212,11 +212,16 @@ void App_Update_State(void)
     // static u8 App_Update_Cnt, App_Update_Cnt1;
     u32 i;
     u8 temp = 0, temp1 = 0;
+    u8 Display_Data_F1[20] = {0}; // TODO 方便keil编译 移到这里 261012
+    u8 Display_Data_F2[20] = {0};
+    u8 Display_Data_F5[20] = {0};
+    u8 Display_Data_F6[20] = {0};
+    u8 Display_Data_F9[64] = {0};
     // APP Update
     switch (App_Update_Cnt)
     {
     case 0:
-        u8 Display_Data_F1[20] = {0};
+        // u8 Display_Data_F1[20] = {0};
         Display_Data_F1[0] = 0xAA;
         Display_Data_F1[1] = 0x55;
         Display_Data_F1[2] = 0x02;
@@ -379,7 +384,7 @@ void App_Update_State(void)
         App_Update_Cnt++;
         break;
     case 1:
-        u8 Display_Data_F2[20] = {0};
+        // u8 Display_Data_F2[20] = {0};
         Display_Data_F2[0] = 0xAA;
         Display_Data_F2[1] = 0x55;
         Display_Data_F2[2] = 0x02;
@@ -456,7 +461,7 @@ void App_Update_State(void)
         App_Update_Cnt++;
         break;
     case 2:
-        u8 Display_Data_F6[20] = {0};
+        // u8 Display_Data_F6[20] = {0};
         Display_Data_F6[0] = 0xAA;
         Display_Data_F6[1] = 0x55;
         Display_Data_F6[2] = 0x02;
@@ -514,7 +519,7 @@ void App_Update_State(void)
         break;
 
     case 3: // todo 上传运行时间 260927
-        u8 Display_Data_F9[64] = {0};
+        // u8 Display_Data_F9[64] = {0};
         Display_Data_F9[0] = 0xAA;
         Display_Data_F9[1] = 0x55;
         Display_Data_F9[2] = 0x02;
@@ -586,30 +591,30 @@ void App_Update_State(void)
         break;
 
     case 5:
-        u8 Display_Data[20] = {0};
-        Display_Data[0] = 0xAA;
-        Display_Data[1] = 0x55;
-        Display_Data[2] = 0x02;
-        Display_Data[3] = 0xe5;
-        Display_Data[4] = 0xF5;
-        Display_Data[5] = 0x01;
-        Display_Data[6] = 0x00;
-        Display_Data[7] = 0x09;
-        Display_Data[8] = (u32)(ota_size_cnt * 100) / ota_size_num;
-        Display_Data[9] = 0;
-        Display_Data[10] = 0;
-        Display_Data[11] = 0;
-        Display_Data[12] = 0;
-        Display_Data[13] = 0;
-        Display_Data[14] = 0;
-        Display_Data[15] = 0;
-        Display_Data[16] = 0;
-        Display_Data[17] = 0;
-        Display_Data[18] = 0x0D;
-        Display_Data[19] = 0x0A;
+        // u8 Display_Data[20] = {0};
+        Display_Data_F5[0] = 0xAA;
+        Display_Data_F5[1] = 0x55;
+        Display_Data_F5[2] = 0x02;
+        Display_Data_F5[3] = 0xe5;
+        Display_Data_F5[4] = 0xF5;
+        Display_Data_F5[5] = 0x01;
+        Display_Data_F5[6] = 0x00;
+        Display_Data_F5[7] = 0x09;
+        Display_Data_F5[8] = (u32)(ota_size_cnt * 100) / ota_size_num;
+        Display_Data_F5[9] = 0;
+        Display_Data_F5[10] = 0;
+        Display_Data_F5[11] = 0;
+        Display_Data_F5[12] = 0;
+        Display_Data_F5[13] = 0;
+        Display_Data_F5[14] = 0;
+        Display_Data_F5[15] = 0;
+        Display_Data_F5[16] = 0;
+        Display_Data_F5[17] = 0;
+        Display_Data_F5[18] = 0x0D;
+        Display_Data_F5[19] = 0x0A;
         for (u8 i = 0; i < 20; i++)
         {
-            EUSART2_Write(Display_Data[i]);
+            EUSART2_Write(Display_Data_F5[i]);
         }
         App_Update_Cnt++;
         break;

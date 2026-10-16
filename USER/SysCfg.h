@@ -53,9 +53,16 @@
  *****************************************************************************************************/
 
 //@ 以下定义机型 新增需要需改 1、配置与2、版本 3、蓝牙名称
+// #define A390S_36 // @ 新中性程序 V1.1
+// #define A390S_9 // @ 乌兹别克斯坦阿齐兹/陈孝源 下发 1.0
+// #define A390S_11 // @ 乌兹别克斯坦阿齐兹/陈孝源 下发 1.0
+// #define A390S_10
+// #define A390S_20 //todo J28 + J28 需要合并 260819
+// #define A390S_33 // * 10寸屏
+
 // #define A391S_5
 // #define A391S_6
-#define A391S_8 // * 样机
+// #define A391S_8 // @ 下发 261012 下发 1.1
 // #define A391S_31 //@ 新协议 下发 1.0 升级1.4
 // #define A391S_32 //@ 匈牙利鲁迪/傅美琴 下发量产程序V1.0（260106） V1.1
 // #define A391S_33 //@ 德国贝格罗斯/许小微 下发 1.0
@@ -63,22 +70,22 @@
 // #define A391S_36 // @ 新中性程序 下发 1.1
 // #define A391S_37 // @ 瑞典罗伯特/陈凯 1.0
 // #define A391S_38 // @ 墨西哥 1.1
-// #define A390S_9 // @ 乌兹别克斯坦阿齐兹/陈孝源 下发 1.0
-// #define A390S_36 // @ 新中性程序 V1.1
-// #define A390S_20 //todo J28 + J28 需要合并 260819
-// #define A393S_20
-// #define A390S_33 // * 10寸屏
-// #define A390S_11 // @ 乌兹别克斯坦阿齐兹/陈孝源 下发 1.0
-// #define A390S_10
+
+// #define A395S_2
 // #define A393S_2
 // #define A393S_5
+// #define A393S_20
+// #define A396S_1 // * 样机
+// #define A396S_2
+
+// #define A390SY_2
+// #define A391SY_2
 // #define A395SY_2
 // #define A395SY
-// #define A395SY_6
+#define A395SY_6
 // #define A393SY_2
 // #define A396SY_2
-// #define A396S_1 // * 样机
-// #define A671S_21 // * 单独工程
+
 // #define A390_X // * 测试单机芯 弹簧小腿配置 260513
 // #define A390_8 // @ 越南泰
 // #define A391_8 // @ 越南泰
@@ -86,6 +93,7 @@
 // #define A391Y // * 样机
 
 #define USE_BLUE_OTA 1 // TODO 代替 app=8 260924
+#define VOICE_CONTROL_EN 1
 
 #ifdef A391S_5
 #define AIR_CLAFBOT 1
@@ -109,7 +117,7 @@
 #define ROLLER_CALVES_EN 1
 #define ROLLER_FOOT_EN 1
 #elif defined A391S_8
-#define PART_USE_SUM_TIME // todo 运行时间 260923
+#define PART_USE_SUM_TIME // @ 运行时间 260923
 #define USE_BLUE_APP 1
 #define NECK_FLEX_ADD 1
 #define USE_S0551
@@ -217,6 +225,10 @@
 #define ROLLER_CALVES_EN 1
 #define ROLLER_FOOT_EN 1
 #elif defined A390S_20
+#define AIR_WEAK 5
+#define FEET_AIR_WEAK 15
+#define CALF_AIR_WEAK 15
+#define MOVEUP_3D_WEAK
 #define USE_S0551
 #define USE_M2_4D
 #define USE_M2
@@ -228,6 +240,9 @@
 #define ROLLER_CALVES_EN 1
 #define ROLLER_FOOT_EN 1
 #elif defined A393S_20
+#define FEET_AIR_WEAK 10
+#define CALF_AIR_WEAK 10
+#define MOVEUP_3D_WEAK
 #define USE_M2_4D
 #define USE_M2
 #define A390_ARMKEY
@@ -278,6 +293,29 @@
 #define HEAT_LEG 1
 #define ROLLER_CALVES_EN 1
 #define ROLLER_FOOT_EN 1
+#elif defined A395S_2
+#define FEET_AIR_WEAK 10
+#define CALF_AIR_WEAK 10
+#define USE_M2
+#define A395_ARMKEY
+#define LED2_PWM
+#define ENGLISH_VOICE
+#define LEG_COM 1
+#define HEAT_BACK 1
+#define HEAT_LEG 1
+#define ROLLER_CALVES_EN 1
+#define ROLLER_FOOT_EN 1
+#elif defined A396S_2
+#define FEET_AIR_WEAK 10
+#define CALF_AIR_WEAK 10
+#define USE_M2
+#define A390_ARMKEY
+#define ENGLISH_VOICE
+#define LEG_COM 1
+#define HEAT_BACK 1
+#define HEAT_LEG 1
+#define ROLLER_CALVES_EN 1
+#define ROLLER_FOOT_EN 1
 #elif defined A393S_5
 #define USE_S0551
 #define FEET_AIR_WEAK 10
@@ -317,6 +355,7 @@
 #define HEAT_LEG 1
 #define ROLLER_CALVES_EN 1
 #define ROLLER_FOOT_EN 1
+#define VOICE_CONTROL_EN 0
 #elif defined A395SY_6
 #define FEET_AIR_WEAK 10
 #define CALF_AIR_WEAK 10
@@ -357,7 +396,29 @@
 #define HEAT_LEG 1
 #define ROLLER_CALVES_EN 1
 #define ROLLER_FOOT_EN 1
+#elif defined A391SY_2
+#define USE_SOUNDWAVE
+#define USE_M2
+#define A365B_ARMKEY
+#define LED2_PWM
+#define ENGLISH_VOICE
+#define LEG_COM 1
+#define HEAT_BACK 1
+#define HEAT_LEG 1
+#define ROLLER_CALVES_EN 1
+#define ROLLER_FOOT_EN 1
+#elif defined A390SY_2
+#define USE_SOUNDWAVE
+#define USE_M2
+#define A390_ARMKEY
+#define ENGLISH_VOICE
+#define LEG_COM 1
+#define HEAT_BACK 1
+#define HEAT_LEG 1
+#define ROLLER_CALVES_EN 1
+#define ROLLER_FOOT_EN 1
 #elif defined A396S_1
+#define PART_USE_SUM_TIME // @ 运行时间 260923
 #define USE_BLUE_APP 1
 #define MOTOR_CALF_WEAK
 #define FEET_AIR_WEAK 10
@@ -492,11 +553,6 @@
 #endif
 
 #define SHOULDER_AIR_RNZ_ANTI /* 肩部气压与揉捏互斥 */
-
-// @ add for blue-ota 260301
-// #if (USE_BLUE_APP == 0)
-// #define USE_BLUE_APP 8
-// #endif
 
 /*-----------------------------------加热模块----------------------------------------------------*/
 #define HEAT_SHOULDER 0 /* 肩膀加热 */

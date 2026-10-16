@@ -370,7 +370,6 @@ const CoreMixOtherTabItem_t SubTab_STRC[] = {
 	{Part_STOP, 0, 0, 0, 0},
 };
 
-
 //* STRD
 const CoreMixOtherTabItem_t SubTab_STRD[] = {
 	{Motor_Calf, MotorPart_STOP, 0, 0, 0},		   // todo add 260521
@@ -681,7 +680,7 @@ const CoreMixOtherTabItem_t SubTab_STR1[] = {
 	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
 
 	{Motor_Feet, MotorPart_STOP, 0, 0, 0},
-	{Part_LOOP, 0, 3, 12, 0},
+	{Part_LOOP, 0, 3, 15, 0},
 	{Motor_Flex, MotorPart_FWD, 30, 0, 3}, //* 伸脚
 	{MoveUp_Knead, KNEAD_FIX_CIRCLE, MOVEUPWIDTH3, 0, 5},
 	{MoveUp_TreadB, TREAD_FIX_CIRCLE, LB_8, 0, 4},
@@ -691,13 +690,26 @@ const CoreMixOtherTabItem_t SubTab_STR1[] = {
 	{MoveUp_Flex, FLEX_FIX_CIRCLE, 48, 0, 3},
 	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
 	{Motor_Flex, MotorPart_REV, 30, 0, 3}, //* 缩脚
+#ifdef USE_M2
+	{MoveUp_Knead, KNEAD_FIX_CIRCLE, MOVEUPWIDTH1, 0, 5},
+#else
 	{MoveUp_Knead, KNEAD_1F2R, 0x97, 4, 0x62},
+#endif
+
 #if (AIR_CLAFBOT)
 	{MoveUp_Flex, FLEX_FIX_CIRCLE, 36, 0, 3},
 #else
 	{MoveUp_Flex, FLEX_FIX_CIRCLE, 48, 0, 3},
 #endif
-	{Part_EXEC, ConMth_MoveUp, 0, 30, 0},
+	{Part_EXEC, ConMth_MoveUp, 100, 30, 0}, // todo 需要停留时间 261011
+
+	{Air_ArmL, AirPart_STOP, 0, 0, 0},
+#if (AIR_CLAFBOT | AIR_SEAT)
+	{Air_Refresh, 0x79, 0, 30, 0},
+#else
+	{Air_Refresh, 0x39, 0, 30, 0}, // @ add 260530
+#endif
+	{Part_EXEC, ConMth_Move, 0, 30, 0},
 
 	{Air_UpDw, B(00000000), 0, 0, 0},
 	{Motor_Feet, MotorPart_FWD, 0, 0, 0},

@@ -772,10 +772,12 @@ void KeyFunc(void)
             if (nVoicePlayer)
             {
                 nVoicePlayer = 0;
+                Voice_Ack(VC_BbOff); // todo add 261011
             }
             else
             {
                 nVoicePlayer = 1;
+                Voice_Ack(VC_BbOn); // todo add 261011
             }
             Flash_Parameter_Write();
             Buzzer = SOUND_ACK;
@@ -968,6 +970,24 @@ void KeyFunc(void)
         case Key_4DIntensity:
             if ((WorkStateGet() == WorkState_Work) || (WorkStateGet() == WorkState_WaitFunc))
             {
+#ifdef USE_M2_4D
+                if (MoveWhichGet()) // @ 增加 250523
+                {
+                    nBackIntensity_M2 = Key.Param - 1;
+                    Buzzer = SOUND_ACK;
+                    if (AutoModeGet() == 0) // * 手动模式直接设置3D强度、自动模式还要参考结合动作表
+                        MassIntensitySet(nBackIntensity_M2);
+                    Move_Flag[MoveDw].Inten = 1; // @ add 250901
+                }
+                else
+                {
+                    nBackIntensity = Key.Param - 1;
+                    Buzzer = SOUND_ACK;
+                    if (AutoModeGet() == 0) // * 手动模式直接设置3D强度、自动模式还要参考结合动作表
+                        MassIntensitySet(nBackIntensity);
+                    Move_Flag[MoveUp].Inten = 1; // @ add 250901
+                }
+#else
                 if (MoveWhichGet()) // @ 增加 250523
                     MoveWhichSet(MoveUp);
 
@@ -976,6 +996,7 @@ void KeyFunc(void)
                 if (AutoModeGet() == 0) // * 手动模式直接设置3D强度、自动模式还要参考结合动作表
                     MassIntensitySet(nBackIntensity);
                 Move_Flag[MoveUp].Inten = 1; // @ add 250901
+#endif
             }
             break;
 
